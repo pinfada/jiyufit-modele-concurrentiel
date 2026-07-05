@@ -1,0 +1,6 @@
+# Dépendances du notebook JiyuFit — modèle concurrentiel
+# Installation : pip install -r requirements.txt
+
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
