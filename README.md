@@ -1,30 +1,57 @@
 # JiyuFit — Modèle de capture concurrentielle à capital de réseau
 
-Modèle mathématique et simulation Python de la capture concurrentielle sur un marché à capital de réseau (effets de réseau), appliqué au cas JiyuFit. Le dépôt réunit les équations du modèle, leur dérivation, une implémentation vérifiée et une batterie de tests automatiques.
+Modèle mathématique et simulation Python de la capture concurrentielle sur un marché à capital de réseau (effets de réseau), appliqué au cas JiyuFit. Le dépôt réunit les équations du modèle, leur dérivation vérifiée, une implémentation testée, la caractérisation complète des équilibres (purs **et** mixtes), et un protocole de calibration.
 
 ## Contenu du dépôt
 
-- `jiyufit_modele_concurrentiel.ipynb` — notebook principal : équations, meilleure réponse, probabilité de capture, dynamique de simulation et tests automatiques (section XII).
+- `jiyufit_modele_concurrentiel.ipynb` — notebook principal (sections I à XXVI, voir plan ci-dessous).
 - `requirements.txt` — dépendances Python.
+- `.github/workflows/notebook-tests.yml` — CI : exécution complète du notebook (toutes les assertions) à chaque push.
 - `README.md` — ce document.
 
 ## Aperçu du modèle
 
-Le modèle décrit deux acteurs se disputant des segments de clientèle (court terme `s` et long terme `l`) sous contrainte de capacité (`K_s`, `K_l`). La probabilité de capture suit une forme à rendement `r > 0`, et chaque acteur choisit son effort marketing via une fonction de meilleure réponse :
+Deux acteurs (puis $n$, section XXIV) se disputent des segments de clientèle court terme `s` et long terme `l` sous contrainte de capacité (`K_s`, `K_l`). La capture suit un contest de Tullock de sensibilité `r > 0` sur les efforts *effectifs* `e = k·x` (capital de réseau × effort brut), la valeur capturable `V` est biface et endogène, et le capital de réseau `k(t)` s'accumule avec la part de marché et l'usage.
 
-- `capture_probability(...)` — probabilité de capturer un client selon les efforts relatifs et le paramètre de rendement `r`.
-- `best_response(k_J, e_m, V_J, r=1.0)` — effort optimal : formule fermée pour `r = 1`, résolution numérique (racine de la condition du premier ordre via `scipy.optimize.brentq`) pour tout `r > 0`.
-- `simulate(...)` — dynamique adaptative pas à pas des populations et des efforts.
+Fonctions principales :
 
-## Tests automatiques (section XII)
+- `capture_probability(...)` — probabilité de capture (Tullock généralisé).
+- `best_response(k_J, e_m, V_J, r)` — effort optimal : forme fermée pour `r = 1`, résolution numérique (brentq sur la CPO, comparaison globale avec la solution de coin) pour tout `r > 0`.
+- `simulate(...)` — duel dynamique symétrique : rival réactif, capital endogène, populations bifaces saturées.
+- `find_nash_equilibrium(...)` / `find_nash_equilibrium_validated(...)` — équilibres de Nash par recherche directe, certifiés par absence de déviation profitable.
+- `symmetric_mixed_equilibrium(...)` — équilibre en stratégies mixtes (fictitious play + certification par exploitabilité) pour le régime `r > r*`.
 
-Le notebook inclut une section de tests par `assert` qui vérifient notamment :
+## Plan du notebook
 
-- normalisation des probabilités et bornes `0 <= P <= 1` ;
-- respect du domaine des fonctions (défense contre `k_J <= 0`, etc.) ;
-- optimalité : la meilleure réponse satisfait bien la condition du premier ordre (test FOC pour `r = 1` et pour `r` général) ;
-- non-régression entre la branche analytique et la branche numérique en `r = 1` ;
-- non-négativité des populations et absence de valeurs non finies dans la simulation.
+| Sections | Contenu |
+|---|---|
+| I–IX | Équations du modèle : capture, valeur biface, gain espéré, meilleure réponse, dynamique des populations (saturation logistique), accumulation du capital de réseau, conditions de bascule et de survie. |
+| X | Vérification algébrique des dérivations (CPO, concavité, limites asymptotiques, fermeture de Tullock) et points de vigilance de modélisation. |
+| XI–XII | Implémentation NumPy/SciPy, simulation du duel, **tests automatiques par `assert`**. |
+| XIII–XVI | Équilibre de Nash simultané par recherche directe (indépendante de la dynamique), stabilité locale (jacobien / rayon spectral), cohérence régime permanent de `simulate` ↔ Nash, validation stricte par absence de déviation profitable (rejet prouvé du profil (0,0)). |
+| XVII–XIX | Existence de l'équilibre pur et seuil critique `r* = 2` (symétrique) ; cas asymétrique : forme fermée, loi d'asymétrie radicale `P_J* = κ/(1+κ)` ; déplacement du seuil `r*(κ)` vers 1 quand l'asymétrie croît. |
+| XX–XXII | Dynamique vs équilibre (coïncidence exacte au régime linéaire `r = 1`, divergence pour `r > 1`), visualisation des trajectoires au seuil, fenêtre de rattrapage (désavantage initial maximal réversible). |
+| XXIII | **Stratégies mixtes pour `r > r*`** : équilibre mixte numérique certifié ε-Nash par exploitabilité, validé contre Baye–Kovenock–de Vries 1994 (paiement espéré nul, dissipation totale de la rente). |
+| XXIV | **Extension à `n` concurrents** : forme fermée `x*(n) = rV(n-1)/n²`, condition d'existence `r ≤ n/(n-1)`, dissipation asymptotique `rV`. |
+| XXV | **Analyse de sensibilité OAT ±30 %** (figure tornado) : `r` domine, puis `δ_k` et `χ_s` — priorisation de la calibration. |
+| XXVI | **Protocole de calibration au cas JiyuFit** : correspondance paramètre ↔ observable métier, démarche d'estimation, estimation de `r` (le point dur), domaine de validité. |
+
+## Domaine de validité — résumé
+
+- **`r < r*(κ)`** : équilibre pur, dynamique adaptative fiable, conclusions des sections XX–XXII applicables. C'est le régime pour lequel JiyuFit est calibré.
+- **`r > r*(κ)`** : aucun équilibre pur ; régime en stratégies mixtes (section XXIII) où le paiement espéré est nul — régime à **éviter**, pas à optimiser.
+- La frontière `r*` dépend de l'asymétrie `κ = k_J V_J / (k_m V_m)` (section XIX) et du nombre de concurrents `n` (section XXIV : `r ≤ n/(n-1)`).
+
+## Tests et intégration continue
+
+Le notebook est auto-vérifiant : chaque section quantitative se termine par des assertions (normalisation des probabilités, conditions du premier ordre, non-régression analytique/numérique, certification des équilibres par déviation, oracles de littérature pour le régime mixte, bornes des populations). La CI GitHub Actions ré-exécute le notebook complet à chaque push et échoue si une seule assertion casse.
+
+Exécution locale équivalente :
+
+```bash
+pip install -r requirements.txt jupyter
+jupyter nbconvert --to notebook --execute jiyufit_modele_concurrentiel.ipynb --output /tmp/executed.ipynb
+```
 
 ## Installation
 
@@ -34,8 +61,11 @@ pip install -r requirements.txt
 
 ## Utilisation
 
-Ouvrir `jiyufit_modele_concurrentiel.ipynb` dans Jupyter ou Google Colab, puis exécuter toutes les cellules. La section XII doit se terminer sans erreur d'assertion.
+Ouvrir `jiyufit_modele_concurrentiel.ipynb` dans Jupyter ou Google Colab, puis exécuter toutes les cellules dans l'ordre. Toutes les sections doivent se terminer sans erreur d'assertion.
 
-## Avertissement méthodologique
+## Limites et travaux restants
 
-La simulation implémente une dynamique adaptative (chaque acteur joue itérativement sa meilleure réponse). Cette dynamique ne coïncide pas nécessairement avec un équilibre de Nash simultané : les points fixes de la dynamique, leur existence et leur stabilité font l'objet des développements à venir.
+- **Calibration** : aucun paramètre n'est encore estimé sur données réelles ; la section XXVI documente le protocole complet (la structure du modèle — seuils, lois d'asymétrie — est indépendante de la calibration ; seule la *position* de JiyuFit par rapport aux frontières en dépend).
+- **Dynamique à `n` joueurs** : l'extension `n > 2` est établie au niveau statique (équilibre, section XXIV) ; `simulate(...)` reste un duel.
+- **Stochasticité** : la dynamique est déterministe ; pas de chocs aléatoires ni d'intervalles de confiance sur les trajectoires.
+- **Stratégies mixtes asymétriques** : la section XXIII couvre le cas symétrique (le seul pour lequel la littérature fournit un oracle exact) ; le cas mixte asymétrique reste ouvert.
