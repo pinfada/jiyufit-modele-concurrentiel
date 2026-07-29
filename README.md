@@ -45,6 +45,14 @@ produit « garantie de fréquentation » de la doctrine de revenus JiyuFit
 La section XXIV verrouille ces mécanismes par assertions (T1-T9), au même
 contrat que la section XII : exécution intégrale sans erreur d'assertion.
 
+Les sections XXV-XXVI lèvent les deux limites de XXIII : **persistance des
+chocs** (facteur AR(1) + crise multi-mois à décroissance — à pic identique,
+une crise de 6 mois cumule > 2× les pertes d'un choc isolé et déclenche le
+paramétrique sur des mois *consécutifs*, d'où un contrat défini par événement)
+et **queues épaisses** (Student-t — la prime pure monte de ~25 % mais la
+tarification par quantile reste calée : plancher et prime s'estiment sur le
+même historique, le tarif s'auto-ajuste à la loi réelle). Assertions T10-T13.
+
 ## Installation
 
 ```bash
@@ -53,7 +61,7 @@ pip install -r requirements.txt
 
 ## Utilisation
 
-Ouvrir `jiyufit_modele_concurrentiel.ipynb` dans Jupyter ou Google Colab, puis exécuter toutes les cellules. Les sections XII et XXIV doivent se terminer sans erreur d'assertion.
+Ouvrir `jiyufit_modele_concurrentiel.ipynb` dans Jupyter ou Google Colab, puis exécuter toutes les cellules. Les sections XII, XXIV et XXVI doivent se terminer sans erreur d'assertion.
 
 ## Avertissement méthodologique
 
