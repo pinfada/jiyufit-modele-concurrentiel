@@ -4,7 +4,7 @@ Modèle mathématique et simulation Python de la capture concurrentielle sur un 
 
 ## Contenu du dépôt
 
-- `jiyufit_modele_concurrentiel.ipynb` — notebook principal : équations, meilleure réponse, probabilité de capture, dynamique de simulation et tests automatiques (section XII).
+- `jiyufit_modele_concurrentiel.ipynb` — notebook principal : équations, meilleure réponse, probabilité de capture, dynamique de simulation et tests automatiques (section XII) ; depuis 2026-07, extension actuarielle stochastique de la garantie de fréquentation (sections XXIII-XXIV, cf. `REVENUE_MODEL_DOCTRINE.md` du dépôt jiyufit).
 - `requirements.txt` — dépendances Python.
 - `README.md` — ce document.
 
@@ -26,6 +26,25 @@ Le notebook inclut une section de tests par `assert` qui vérifient notamment :
 - non-régression entre la branche analytique et la branche numérique en `r = 1` ;
 - non-négativité des populations et absence de valeurs non finies dans la simulation.
 
+## Extension actuarielle — garantie de fréquentation (sections XXIII-XXIV)
+
+Les sections I-XXII sont **déterministes** (dynamique adaptative en espérances).
+La section XXIII introduit l'**aléa** : le remplissage d'un créneau y est une
+variable aléatoire logit-normale corrélée entre salles par un facteur commun
+(paramètre `rho` = part de variance systémique). Elle simule par Monte-Carlo le
+produit « garantie de fréquentation » de la doctrine de revenus JiyuFit
+(`jiyufit/docs/02-business/REVENUE_MODEL_DOCTRINE.md`) :
+
+- plancher garanti = quantile P10 de l'historique par salle ;
+- prime pure (espérance de sinistre) et prime commerciale (chargement `gamma`) ;
+- loss ratio du portefeuille selon le nombre de salles `N` et la corrélation `rho`
+  — la diversification n'absorbe que le risque décorrélé ;
+- levier yield (pricing dynamique) qui réduit la sinistralité à la source ;
+- choc systémique + déclencheur paramétrique (transfert assurantiel).
+
+La section XXIV verrouille ces mécanismes par assertions (T1-T9), au même
+contrat que la section XII : exécution intégrale sans erreur d'assertion.
+
 ## Installation
 
 ```bash
@@ -34,7 +53,7 @@ pip install -r requirements.txt
 
 ## Utilisation
 
-Ouvrir `jiyufit_modele_concurrentiel.ipynb` dans Jupyter ou Google Colab, puis exécuter toutes les cellules. La section XII doit se terminer sans erreur d'assertion.
+Ouvrir `jiyufit_modele_concurrentiel.ipynb` dans Jupyter ou Google Colab, puis exécuter toutes les cellules. Les sections XII et XXIV doivent se terminer sans erreur d'assertion.
 
 ## Avertissement méthodologique
 
