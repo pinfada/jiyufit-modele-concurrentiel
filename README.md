@@ -4,7 +4,7 @@ Modèle mathématique et simulation Python de la capture concurrentielle sur un 
 
 ## Contenu du dépôt
 
-- `jiyufit_modele_concurrentiel.ipynb` — notebook principal (sections I à XXVII, voir plan ci-dessous).
+- `jiyufit_modele_concurrentiel.ipynb` — notebook principal (sections I à XXVIII, voir plan ci-dessous).
 - `data/` — données empiriques figées (provenance documentée dans `data/README.md`), utilisées par la section XXVII.
 - `requirements.txt` — dépendances Python.
 - `.github/workflows/notebook-tests.yml` — CI : exécution complète du notebook (toutes les assertions) à chaque push.
@@ -37,6 +37,7 @@ Fonctions principales :
 | XXV | **Analyse de sensibilité OAT ±30 %** (figure tornado) : `r` domine, puis `δ_k` et `χ_s` — priorisation de la calibration. |
 | XXVI | **Protocole de calibration au cas JiyuFit** : correspondance paramètre ↔ observable métier, démarche d'estimation, estimation de `r` (le point dur), domaine de validité. |
 | XXVII | **Épreuve empirique sur données réelles** (Basic-Fit vs Fitness Park, 54 mois) : la réduction exacte du modèle en AR(1) sur le logit de la part explique R² ≈ 0,84 d'un duel réel ; `r` estimé ≈ 0,81, IC95 [0,72 ; 0,91] — régime stable identifié sur toutes les fenêtres ; le plateau prédit par la dynamique (~0,22) coïncide avec le plateau observé (~0,24) ; backtest honnête contre trois références naïves (bat la diffusion logistique partout, la persistance sur 1 fenêtre sur 3). |
+| XXVIII | **Améliorations issues de l'épreuve** : intégration de la saisonnalité (creux d'été) — RMSE de backtest réduite sur toutes les fenêtres, jeu au moins égal avec la persistance sur 2/3 ; correction du biais d'atténuation dû au bruit du proxy (IV + série lissée) — `r` vraisemblable ≈ 0,92 plutôt que 0,81, régime stable maintenu (P(r ≥ 1) ≈ 0,001 par bootstrap par blocs) mais marge au seuil critique plus mince. |
 
 ## Domaine de validité — résumé
 
@@ -67,7 +68,7 @@ Ouvrir `jiyufit_modele_concurrentiel.ipynb` dans Jupyter ou Google Colab, puis e
 
 ## Limites et travaux restants
 
-- **Calibration** : la section XXVII fournit une première corroboration externe de la brique dynamique sur un duel réel du marché fitness français (via un proxy d'attention, pas une mesure directe de capture) ; les paramètres propres à JiyuFit restent à estimer selon le protocole de la section XXVI. Les seuils critiques (`r* = 2`, `r*(κ)`) ne sont pas testés empiriquement — le marché observé n'a jamais visité le régime instable.
+- **Calibration** : les sections XXVII–XXVIII fournissent une première corroboration externe de la brique dynamique sur un duel réel du marché fitness français (via un proxy d'attention, pas une mesure directe de capture), avec `r` vraisemblable ≈ 0,92 après correction du bruit ; les paramètres propres à JiyuFit restent à estimer selon le protocole de la section XXVI. Les seuils critiques (`r* = 2`, `r*(κ)`) ne sont pas testés empiriquement — le marché observé n'a jamais visité le régime instable. Un second duel (par ex. Gymlib vs Urban Sports Club) est nécessaire pour tester la stabilité inter-marchés de `r`.
 - **Dynamique à `n` joueurs** : l'extension `n > 2` est établie au niveau statique (équilibre, section XXIV) ; `simulate(...)` reste un duel.
 - **Stochasticité** : la dynamique est déterministe ; pas de chocs aléatoires ni d'intervalles de confiance sur les trajectoires.
 - **Stratégies mixtes asymétriques** : la section XXIII couvre le cas symétrique (le seul pour lequel la littérature fournit un oracle exact) ; le cas mixte asymétrique reste ouvert.
