@@ -1,7 +1,7 @@
 name: notebook-tests
 
 # Execute le notebook de bout en bout : toute assertion cassee (sections
-# XII a XXV) fait echouer le job.
+# XII a XXXIII) fait echouer le job.
 
 on:
   push:

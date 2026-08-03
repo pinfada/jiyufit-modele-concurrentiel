@@ -4,7 +4,7 @@ Modèle mathématique et simulation Python de la capture concurrentielle sur un 
 
 ## Contenu du dépôt
 
-- `jiyufit_modele_concurrentiel.ipynb` — notebook principal (sections I à XXIX, voir plan ci-dessous).
+- `jiyufit_modele_concurrentiel.ipynb` — notebook principal (sections I à XXXIII, voir plan ci-dessous).
 - `data/` — données empiriques figées (provenance documentée dans `data/README.md`), utilisées par les sections XXVII–XXIX.
 - `docs/STRATEGIE_EXPANSION_MESURE.md` — stratégie opérationnelle dérivée du modèle validé (expansion séquentielle à densité locale) et dispositif de mesure (KPI, gates, rituel trimestriel).
 - `outils/suivi_ville.py` — outil de pilotage : lit le CSV mensuel d'une ville et rend le diagnostic (plateau prédit, position sur trajectoire, gates G1/G2, alerte sur `r`).
@@ -41,6 +41,8 @@ Fonctions principales :
 | XXVII | **Épreuve empirique sur données réelles** (Basic-Fit vs Fitness Park, 54 mois) : la réduction exacte du modèle en AR(1) sur le logit de la part explique R² ≈ 0,84 d'un duel réel ; `r` estimé ≈ 0,81, IC95 [0,72 ; 0,91] — régime stable identifié sur toutes les fenêtres ; le plateau prédit par la dynamique (~0,22) coïncide avec le plateau observé (~0,24) ; backtest honnête contre trois références naïves (bat la diffusion logistique partout, la persistance sur 1 fenêtre sur 3). |
 | XXVIII | **Améliorations issues de l'épreuve** : intégration de la saisonnalité (creux d'été) — RMSE de backtest réduite sur toutes les fenêtres, jeu au moins égal avec la persistance sur 2/3 ; correction du biais d'atténuation dû au bruit du proxy (IV + série lissée) — `r` vraisemblable ≈ 0,92 plutôt que 0,81, régime stable maintenu (P(r ≥ 1) ≈ 0,001 par bootstrap par blocs) mais marge au seuil critique plus mince. |
 | XXIX | **Stabilité inter-marchés de `r`** sur trois duels réels (+ ClassPass/Gympass et Gymlib/Urban Sports Club, 114 mois chacun) : la dispersion des `r` OLS (0,53–0,81) suit le niveau de bruit des séries (atténuation), les `r` corrigés se concentrent (0,92–1,03) ; estimation poolée `r ≈ 0,93 < 1` (P(r ≥ 1) < 10⁻³ sur 282 mois) — compatible avec une constante sectorielle, proche de la frontière ; plateaux prédits ≈ observés (± 2,5 pts) sur les trois duels ; le modèle bat la persistance de 55 % là où la trajectoire bouge encore (Gymlib/USC) ; `c` varie par marché (parité pour les agrégateurs, ~25/75 pour les salles), `r` non. |
+| XXX–XXXI | **Garantie de fréquentation — modèle actuariel stochastique** (produit de `REVENUE_MODEL_DOCTRINE.md`) : taux de remplissage en logit-normal à un facteur commun, plancher au quantile P10, prime pure + chargements, corrélation comme seul vrai risque de ruine ; assertions T1–T9. |
+| XXXII–XXXIII | **Persistance des chocs et queues épaisses** : facteur systémique AR(1) et crise à décroissance, innovations Student-t, effet sur le ratio de perte et le déclenchement paramétrique ; assertions T10–T13. |
 
 ## Domaine de validité — résumé
 
@@ -59,6 +61,33 @@ pip install -r requirements.txt jupyter
 jupyter nbconvert --to notebook --execute jiyufit_modele_concurrentiel.ipynb --output /tmp/executed.ipynb
 ```
 
+## Extension actuarielle — garantie de fréquentation (sections XXIII-XXIV)
+
+Les sections I-XXII sont **déterministes** (dynamique adaptative en espérances).
+La section XXIII introduit l'**aléa** : le remplissage d'un créneau y est une
+variable aléatoire logit-normale corrélée entre salles par un facteur commun
+(paramètre `rho` = part de variance systémique). Elle simule par Monte-Carlo le
+produit « garantie de fréquentation » de la doctrine de revenus JiyuFit
+(`jiyufit/docs/02-business/REVENUE_MODEL_DOCTRINE.md`) :
+
+- plancher garanti = quantile P10 de l'historique par salle ;
+- prime pure (espérance de sinistre) et prime commerciale (chargement `gamma`) ;
+- loss ratio du portefeuille selon le nombre de salles `N` et la corrélation `rho`
+  — la diversification n'absorbe que le risque décorrélé ;
+- levier yield (pricing dynamique) qui réduit la sinistralité à la source ;
+- choc systémique + déclencheur paramétrique (transfert assurantiel).
+
+La section XXIV verrouille ces mécanismes par assertions (T1-T9), au même
+contrat que la section XII : exécution intégrale sans erreur d'assertion.
+
+Les sections XXV-XXVI lèvent les deux limites de XXIII : **persistance des
+chocs** (facteur AR(1) + crise multi-mois à décroissance — à pic identique,
+une crise de 6 mois cumule > 2× les pertes d'un choc isolé et déclenche le
+paramétrique sur des mois *consécutifs*, d'où un contrat défini par événement)
+et **queues épaisses** (Student-t — la prime pure monte de ~25 % mais la
+tarification par quantile reste calée : plancher et prime s'estiment sur le
+même historique, le tarif s'auto-ajuste à la loi réelle). Assertions T10-T13.
+
 ## Installation
 
 ```bash
@@ -73,5 +102,5 @@ Ouvrir `jiyufit_modele_concurrentiel.ipynb` dans Jupyter ou Google Colab, puis e
 
 - **Calibration** : les sections XXVII–XXIX corroborent la brique dynamique sur trois duels réels du secteur fitness (via des proxys d'attention, pas des mesures directes de capture), avec un `r` sectoriel poolé ≈ 0,93 — régime stable mais proche de la frontière `r = 1`, en particulier pour le marché des agrégateurs (celui de JiyuFit). Les paramètres propres à JiyuFit restent à estimer selon le protocole de la section XXVI. Les seuils critiques (`r* = 2`, `r*(κ)`) ne sont pas testés empiriquement — aucun des marchés observés n'a visité le régime instable.
 - **Dynamique à `n` joueurs** : l'extension `n > 2` est établie au niveau statique (équilibre, section XXIV) ; `simulate(...)` reste un duel.
-- **Stochasticité** : la dynamique est déterministe ; pas de chocs aléatoires ni d'intervalles de confiance sur les trajectoires.
+- **Stochasticité** : la dynamique concurrentielle (duel) reste déterministe — pas de chocs aléatoires ni d'intervalles de confiance sur les trajectoires de parts de marché. La stochasticité introduite aux sections XXX–XXXIII porte sur un **autre objet** : les taux de remplissage sous garantie de fréquentation (facteur commun, persistance, queues épaisses). Les deux briques ne sont pas encore couplées.
 - **Stratégies mixtes asymétriques** : la section XXIII couvre le cas symétrique (le seul pour lequel la littérature fournit un oracle exact) ; le cas mixte asymétrique reste ouvert.
