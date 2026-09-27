@@ -1,0 +1,9 @@
+periode_debut,periode_fin,metrique,valeur,relation,unite,perimetre,source_url
+2023-01,2023-11,croissance_reservations_fitness,64,approx,pourcent_vs_annee_precedente,fitness_global_rapport_2023,https://classpass.com/blog/2023-classpass-look-back-report/
+2023-10,2024-10,croissance_reservations_fitness,51,approx,pourcent_vs_annee_precedente,fitness_global_rapport_2024,https://classpass.com/blog/2024-classpass-look-back-report/
+,2024-10,reservations_cumulees,248000000,gt,reservations,toutes_categories_global_depuis_creation,https://classpass.com/blog/2024-classpass-look-back-report/
+2025-01-01,2025-10-10,recherches_pilates,27000000,gt,recherches,pilates_global_rapport_2025,https://classpass.com/blog/2025-classpass-look-back-report/
+2025-01-01,2025-10-10,reservations_pilates,15000000,gt,reservations,pilates_global_rapport_2025,https://classpass.com/blog/2025-classpass-look-back-report/
+2025-01,2025-12,reservations_annuelles,62000000,ge,reservations,toutes_categories_global,https://classpass.com/partners/2026-industry-impact-report
+,2026-01,etablissements_listes,88000,ge,etablissements,global_toutes_categories_pas_capacite_disponible,https://classpass.com/partners/2026-industry-impact-report
+2025-01,2025-12,classes_non_completes,85,approx,pourcent,classes_fitness_partenaires_integres_pas_recherches,https://classpass.com/partners/faqs

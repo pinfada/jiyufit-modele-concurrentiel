@@ -1,0 +1,24 @@
+{
+  "origine": "Transcription des publications primaires consultées avec outil web. Téléchargement HTML direct des communiqués Mindbody refusé (HTTP).",
+  "horodatage_collecte_utc": "2026-09-27T20:42:11.899020+00:00",
+  "sha256_csv": "8a330fae69932ff640e3c893f362328486e3f758f6bc2bf14c1ded082cdf0893",
+  "interpolation": false,
+  "calibration_liquidite_possible": false,
+  "donnees_manquantes": [
+    "recherches locales horodatées",
+    "offres compatibles réellement disponibles",
+    "utilisateurs actifs de la période",
+    "entrants et sortants des deux faces",
+    "places vendues et capacité disponible"
+  ],
+  "limites": [
+    "Deux marques du même groupe depuis acquisition ClassPass achevée le 15 octobre 2021 ; ne pas traiter comme marchés indépendants.",
+    "Ne pas confondre croissance annuelle, flux, cumul, stock, borne inférieure et valeur exacte."
+  ],
+  "definition_consommateurs": "Estimation des consommateurs uniques ayant effectué des transactions sur les deux années précédentes ; pas MAU.",
+  "sources_complementaires": [
+    "https://www.sec.gov/Archives/edgar/data/1458962/000145896218000006/a2018-q1_10xq.htm",
+    "https://www.mindbodyonline.com/sites/default/files/public/education/learning-assets/2019-Fitness-in-America-Report.pdf"
+  ],
+  "definitions": "Subscribers = sites ou praticiens abonnés au logiciel ; acquisitions et recentrage commercial affectent le périmètre."
+}

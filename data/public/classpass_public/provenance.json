@@ -1,0 +1,18 @@
+{
+  "origine": "Transcription des publications primaires consultées avec outil web.",
+  "horodatage_collecte_utc": "2026-09-27T20:42:11.900019+00:00",
+  "sha256_csv": "7ad42e9b316df18881eca54e9bb5b1757274f10b5acc8ae161f355a60170277b",
+  "interpolation": false,
+  "calibration_liquidite_possible": false,
+  "donnees_manquantes": [
+    "recherches locales horodatées",
+    "offres compatibles réellement disponibles",
+    "utilisateurs actifs de la période",
+    "entrants et sortants des deux faces",
+    "places vendues et capacité disponible"
+  ],
+  "limites": [
+    "Deux marques du même groupe depuis acquisition ClassPass achevée le 15 octobre 2021 ; ne pas traiter comme marchés indépendants.",
+    "Ne pas confondre croissance annuelle, flux, cumul, stock, borne inférieure et valeur exacte."
+  ]
+}

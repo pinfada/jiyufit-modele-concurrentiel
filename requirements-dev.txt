@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Exécution et vérification du notebook dans l'environnement du projet.
+nbconvert>=7.0
+ipykernel>=6.0
+pypdf>=6.0

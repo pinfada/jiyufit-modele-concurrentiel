@@ -1,106 +1,180 @@
-# JiyuFit — Modèle de capture concurrentielle à capital de réseau
+# JiyuFit — Modèle concurrentiel à capital de réseau
 
-Modèle mathématique et simulation Python de la capture concurrentielle sur un marché à capital de réseau (effets de réseau), appliqué au cas JiyuFit. Le dépôt réunit les équations du modèle, leur dérivation vérifiée, une implémentation testée, la caractérisation complète des équilibres (purs **et** mixtes), et un protocole de calibration.
+Modèle mathématique et simulation Python d'un duel de plateformes, avec
+capital de réseau et populations de **sportifs** (`s`) et de **lieux
+partenaires** (`l`). Le dépôt combine théorie, scénarios numériques,
+exploration de trois proxys d'attention et suivi conditionnel d'une ville.
 
-## Contenu du dépôt
+**Statut : outil de recherche et d'aide à la décision, non calibré sur des
+données propres à JiyuFit.** L'exécution et les assertions vérifient des
+propriétés du code ; elles ne démontrent pas une validité causale ou une
+précision prospective universelle.
 
-- `jiyufit_modele_concurrentiel.ipynb` — notebook principal (sections I à XXXIII, voir plan ci-dessous).
-- `data/` — données empiriques figées (provenance documentée dans `data/README.md`), utilisées par les sections XXVII–XXIX.
-- `docs/STRATEGIE_EXPANSION_MESURE.md` — stratégie opérationnelle dérivée du modèle validé (expansion séquentielle à densité locale) et dispositif de mesure (KPI, gates, rituel trimestriel).
-- `outils/suivi_ville.py` — outil de pilotage : lit le CSV mensuel d'une ville et rend le diagnostic (plateau prédit, position sur trajectoire, gates G1/G2, alerte sur `r`).
-- `requirements.txt` — dépendances Python.
-- `.github/workflows/notebook-tests.yml` — CI : exécution complète du notebook (toutes les assertions) à chaque push.
-- `README.md` — ce document.
+## Modèle biface, liquidité et OPEX
 
-## Aperçu du modèle
+Le [rapport Mindbody/ClassPass](docs/MINDBODY_CLASSPASS_ET_MODELE_BIFACE.md)
+présente les données publiques collectées, les tests exécutés et le modèle
+local utilisateurs/prestataires. Celui-ci relie les réservations à la
+compatibilité et à la capacité disponible, puis calcule croissance,
+attrition et solde d'exploitation. Les effets de réseau peuvent produire
+une accélération, sans imposer une trajectoire exponentielle.
 
-Deux acteurs (puis $n$, section XXIV) se disputent des segments de clientèle court terme `s` et long terme `l` sous contrainte de capacité (`K_s`, `K_l`). La capture suit un contest de Tullock de sensibilité `r > 0` sur les efforts *effectifs* `e = k·x` (capital de réseau × effort brut), la valeur capturable `V` est biface et endogène, et le capital de réseau `k(t)` s'accumule avec la part de marché et l'usage.
+Les 14 trimestres Mindbody servent à des contrôles prédictifs ; les
+8 observations ClassPass conservent leurs fenêtres et définitions propres.
+Les paramètres des scénarios bifaces restent **hypothétiques** : ces
+publications ne permettent pas de calibrer la liquidité ni un point de bascule.
+Le module `outils/liquidite_observee.py` prépare cette mesure à partir des
+recherches réelles, incluant les recherches sans résultat.
 
-Fonctions principales :
+```powershell
+.\.venv\Scripts\python.exe -X utf8 outils/valider_plateformes.py
+```
 
-- `capture_probability(...)` — probabilité de capture (Tullock généralisé).
-- `best_response(k_J, e_m, V_J, r)` — effort optimal : forme fermée pour `r = 1`, résolution numérique (brentq sur la CPO, comparaison globale avec la solution de coin) pour tout `r > 0`.
-- `simulate(...)` — duel dynamique symétrique : rival réactif, capital endogène, populations bifaces saturées.
-- `find_nash_equilibrium(...)` / `find_nash_equilibrium_validated(...)` — équilibres de Nash par recherche directe, certifiés par absence de déviation profitable.
-- `symmetric_mixed_equilibrium(...)` — équilibre en stratégies mixtes (fictitious play + certification par exploitabilité) pour le régime `r > r*`.
+## Corrections scientifiques
+
+Un [test sur les données officielles de Basic-Fit](docs/VALIDATION_CONCURRENT_BASICFIT.md)
+utilise désormais 24 trimestres d'abonnements publiés, de 2020 à 2025. Le CSV,
+les sources et les scripts de collecte et de validation sont livrés. Ce test
+de dynamique des effectifs ne remplace pas une validation des parts de marché.
+
+Les sections empiriques ont été révisées après audit :
+
+- distinction entre la persistance observée `phi` et la sensibilité
+  structurelle `r` de Tullock ;
+- bootstrap de triplets de retards, sans faux voisinages aux raccords ;
+- rééchantillonnage calendaire synchronisé entre les duels ;
+- covariance HAC et diagnostic IV avec ensembles Anderson–Rubin ;
+- comparaison à origines croissantes, horizons fixes 1/3/6 mois, RMSE et MAE ;
+- gates cohérentes : une traction insuffisante ne peut plus autoriser l'expansion ;
+- statut indéterminé si la calibration ou les preuves métier sont manquantes.
+
+Les sources, adaptations et limites figurent dans les
+[fondements scientifiques](docs/FONDEMENTS_SCIENTIFIQUES.md).
+Le [rapport après corrections](docs/CORRECTIONS_ET_RESULTATS.md) présente les
+résultats recalculés et leurs différences avec l'état initial.
+
+## Fichiers
+
+| Fichier | Rôle |
+|---|---|
+| `jiyufit_modele_concurrentiel.ipynb` | Théorie, simulation et évaluations, sections I–XXXVII |
+| `outils/marche_biface.py` | Scénarios locaux : deux faces, liquidité, capacité et OPEX |
+| `outils/valider_plateformes.py` | Contrôles Mindbody/ClassPass et export des scénarios |
+| `outils/liquidite_observee.py` | Mesure sur recherches horodatées, sans inventer les données absentes |
+| `outils/inference.py` | HAC, IV, bootstrap, diagnostics et backtests partagés |
+| `outils/dynamique_reduite.py` | Accumulation finie et dérivée locale au point fixe |
+| `outils/donnees.py` | Validation et lecture des séries mensuelles |
+| `outils/suivi_ville.py` | Scénarios de trajectoire et gates G1/G2 |
+| `outils/collecter_basicfit.py` | Collecte des tableaux trimestriels des rapports officiels |
+| `outils/valider_concurrent.py` | Test externe sur effectifs réels, avec comparaisons chronologiques |
+| `tests/` | Régressions métier, cas limites statistiques et absence de fuite temporelle |
+| `data/` | Proxys historiques, données publiques Basic-Fit/Mindbody/ClassPass et gabarits |
+| `docs/STRATEGIE_EXPANSION_MESURE.md` | Règles opérationnelles, hypothèses et format des critères métier |
+| `.github/workflows/notebook-tests.yml` | Exécution des tests et du notebook à chaque push/PR |
 
 ## Plan du notebook
 
-| Sections | Contenu |
+| Sections | Contenu et portée |
 |---|---|
-| I–IX | Équations du modèle : capture, valeur biface, gain espéré, meilleure réponse, dynamique des populations (saturation logistique), accumulation du capital de réseau, conditions de bascule et de survie. |
-| X | Vérification algébrique des dérivations (CPO, concavité, limites asymptotiques, fermeture de Tullock) et points de vigilance de modélisation. |
-| XI–XII | Implémentation NumPy/SciPy, simulation du duel, **tests automatiques par `assert`**. |
-| XIII–XVI | Équilibre de Nash simultané par recherche directe (indépendante de la dynamique), stabilité locale (jacobien / rayon spectral), cohérence régime permanent de `simulate` ↔ Nash, validation stricte par absence de déviation profitable (rejet prouvé du profil (0,0)). |
-| XVII–XIX | Existence de l'équilibre pur et seuil critique `r* = 2` (symétrique) ; cas asymétrique : forme fermée, loi d'asymétrie radicale `P_J* = κ/(1+κ)` ; déplacement du seuil `r*(κ)` vers 1 quand l'asymétrie croît. |
-| XX–XXII | Dynamique vs équilibre (coïncidence exacte au régime linéaire `r = 1`, divergence pour `r > 1`), visualisation des trajectoires au seuil, fenêtre de rattrapage (désavantage initial maximal réversible). |
-| XXIII | **Stratégies mixtes pour `r > r*`** : équilibre mixte numérique certifié ε-Nash par exploitabilité, validé contre Baye–Kovenock–de Vries 1994 (paiement espéré nul, dissipation totale de la rente). |
-| XXIV | **Extension à `n` concurrents** : forme fermée `x*(n) = rV(n-1)/n²`, condition d'existence `r ≤ n/(n-1)`, dissipation asymptotique `rV`. |
-| XXV | **Analyse de sensibilité OAT ±30 %** (figure tornado) : `r` domine, puis `δ_k` et `χ_s` — priorisation de la calibration. |
-| XXVI | **Protocole de calibration au cas JiyuFit** : correspondance paramètre ↔ observable métier, démarche d'estimation, estimation de `r` (le point dur), domaine de validité. |
-| XXVII | **Épreuve empirique sur données réelles** (Basic-Fit vs Fitness Park, 54 mois) : la réduction exacte du modèle en AR(1) sur le logit de la part explique R² ≈ 0,84 d'un duel réel ; `r` estimé ≈ 0,81, IC95 [0,72 ; 0,91] — régime stable identifié sur toutes les fenêtres ; le plateau prédit par la dynamique (~0,22) coïncide avec le plateau observé (~0,24) ; backtest honnête contre trois références naïves (bat la diffusion logistique partout, la persistance sur 1 fenêtre sur 3). |
-| XXVIII | **Améliorations issues de l'épreuve** : intégration de la saisonnalité (creux d'été) — RMSE de backtest réduite sur toutes les fenêtres, jeu au moins égal avec la persistance sur 2/3 ; correction du biais d'atténuation dû au bruit du proxy (IV + série lissée) — `r` vraisemblable ≈ 0,92 plutôt que 0,81, régime stable maintenu (P(r ≥ 1) ≈ 0,001 par bootstrap par blocs) mais marge au seuil critique plus mince. |
-| XXIX | **Stabilité inter-marchés de `r`** sur trois duels réels (+ ClassPass/Gympass et Gymlib/Urban Sports Club, 114 mois chacun) : la dispersion des `r` OLS (0,53–0,81) suit le niveau de bruit des séries (atténuation), les `r` corrigés se concentrent (0,92–1,03) ; estimation poolée `r ≈ 0,93 < 1` (P(r ≥ 1) < 10⁻³ sur 282 mois) — compatible avec une constante sectorielle, proche de la frontière ; plateaux prédits ≈ observés (± 2,5 pts) sur les trois duels ; le modèle bat la persistance de 55 % là où la trajectoire bouge encore (Gymlib/USC) ; `c` varie par marché (parité pour les agrégateurs, ~25/75 pour les salles), `r` non. |
-| XXX–XXXI | **Garantie de fréquentation — modèle actuariel stochastique** (produit de `REVENUE_MODEL_DOCTRINE.md`) : taux de remplissage en logit-normal à un facteur commun, plancher au quantile P10, prime pure + chargements, corrélation comme seul vrai risque de ruine ; assertions T1–T9. |
-| XXXII–XXXIII | **Persistance des chocs et queues épaisses** : facteur systémique AR(1) et crise à décroissance, innovations Student-t, effet sur le ratio de perte et le déclenchement paramétrique ; assertions T10–T13. |
+| I–X | Capture de Tullock, valeur biface stylisée, populations et capital ; dérivations et limites |
+| XI–XII | Simulation adaptative et assertions numériques |
+| XIII–XIX | Recherche et contrôle numérique des équilibres purs, cas symétriques et asymétriques |
+| XX–XXII | Trajectoires pour paramètres illustratifs ; sensibilité au schéma adaptatif et aux conventions à effort nul |
+| XXIII | Stratégies mixtes symétriques ; exploitabilité du jeu discrétisé et comparaison à la littérature |
+| XXIV–XXV | Extension statique à n joueurs et sensibilité locale OAT |
+| XXVI | Protocole de calibration et données propres à collecter |
+| XXVII | AR(1)-logit descriptif, HAC et validation à origines croissantes |
+| XXVIII | Bruit de mesure, IV, instruments faibles et bootstrap corrigé |
+| XXIX | Comparaison des trois duels, pooling conditionnel et sensibilité |
+| XXX–XXXIII | Garantie de fréquentation : simulations actuarielles, corrélation, persistance et queues épaisses ; tests T1–T13 |
+| XXXIV | Accumulation finie : pourquoi la persistance ne suffit pas à identifier r |
+| XXXV | Données officielles Basic-Fit : test prédictif trimestriel des effectifs, sans validation structurelle |
+| XXXVI | Mindbody/ClassPass : données publiques et contrôles prédictifs, sans calibration de liquidité |
+| XXXVII | Scénarios bifaces locaux : réseau, capacité, OPEX et bascule conditionnelle |
 
-## Domaine de validité — résumé
+## Résultats descriptifs et domaine de validité
 
-- **`r < r*(κ)`** : équilibre pur, dynamique adaptative fiable, conclusions des sections XX–XXII applicables. C'est le régime pour lequel JiyuFit est calibré.
-- **`r > r*(κ)`** : aucun équilibre pur ; régime en stratégies mixtes (section XXIII) où le paiement espéré est nul — régime à **éviter**, pas à optimiser.
-- La frontière `r*` dépend de l'asymétrie `κ = k_J V_J / (k_m V_m)` (section XIX) et du nombre de concurrents `n` (section XXIV : `r ≤ n/(n-1)`).
+Sur le CSV Basic-Fit/Fitness Park, l'AR(1)-logit retrouve `phi OLS ≈ 0.814`
+et `R² ≈ 0.842`. Le pooling IV donne environ `0.926` sous hypothèse d'un
+coefficient commun. Cela ne démontre pas une constante sectorielle. Sans
+le duel Basic-Fit/Fitness Park, l'estimation poolée est proche de `0.991`.
 
-## Tests et intégration continue
+Les proxys ne sont pas des captures de clients ; leur source primaire reste
+à documenter. Le point fixe ajusté et la moyenne de fin d'échantillon ne
+constituent pas une validation hors échantillon d'un plateau. Les gains de
+prévision varient selon le duel, l'horizon et la référence retenue.
 
-Le notebook est auto-vérifiant : chaque section quantitative se termine par des assertions (normalisation des probabilités, conditions du premier ordre, non-régression analytique/numérique, certification des équilibres par déviation, oracles de littérature pour le régime mixte, bornes des populations). La CI GitHub Actions ré-exécute le notebook complet à chaque push et échoue si une seule assertion casse.
+Le seuil de persistance `phi = 1` est distinct du seuil du Nash pur `r*`.
+La dissipation totale citée dans le régime mixte concerne le cas symétrique
+étudié ; elle ne se transpose pas automatiquement à tous les marchés. Les
+contrôles numériques sur grille ne couvrent pas toutes les déviations du
+jeu continu. Le simulateur historique peut produire des états absorbants
+artificiels via sa convention de réponse à un effort rival nul.
 
-Exécution locale équivalente :
+## Vérification locale sous Windows (PowerShell)
 
-```bash
-pip install -r requirements.txt jupyter
-jupyter nbconvert --to notebook --execute jiyufit_modele_concurrentiel.ipynb --output /tmp/executed.ipynb
+Depuis la racine du dépôt, installer une fois l'environnement et son noyau :
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m ipykernel install --sys-prefix --name jiyufit-local --display-name "Python (JiyuFit local)"
 ```
 
-## Extension actuarielle — garantie de fréquentation (sections XXIII-XXIV)
+Exécuter les tests, puis le notebook complet :
 
-Les sections I-XXII sont **déterministes** (dynamique adaptative en espérances).
-La section XXIII introduit l'**aléa** : le remplissage d'un créneau y est une
-variable aléatoire logit-normale corrélée entre salles par un facteur commun
-(paramètre `rho` = part de variance systémique). Elle simule par Monte-Carlo le
-produit « garantie de fréquentation » de la doctrine de revenus JiyuFit
-(`jiyufit/docs/02-business/REVENUE_MODEL_DOCTRINE.md`) :
-
-- plancher garanti = quantile P10 de l'historique par salle ;
-- prime pure (espérance de sinistre) et prime commerciale (chargement `gamma`) ;
-- loss ratio du portefeuille selon le nombre de salles `N` et la corrélation `rho`
-  — la diversification n'absorbe que le risque décorrélé ;
-- levier yield (pricing dynamique) qui réduit la sinistralité à la source ;
-- choc systémique + déclencheur paramétrique (transfert assurantiel).
-
-La section XXIV verrouille ces mécanismes par assertions (T1-T9), au même
-contrat que la section XII : exécution intégrale sans erreur d'assertion.
-
-Les sections XXV-XXVI lèvent les deux limites de XXIII : **persistance des
-chocs** (facteur AR(1) + crise multi-mois à décroissance — à pic identique,
-une crise de 6 mois cumule > 2× les pertes d'un choc isolé et déclenche le
-paramétrique sur des mois *consécutifs*, d'où un contrat défini par événement)
-et **queues épaisses** (Student-t — la prime pure monte de ~25 % mais la
-tarification par quantile reste calée : plancher et prime s'estiment sur le
-même historique, le tarif s'auto-ajuste à la loi réelle). Assertions T10-T13.
-
-## Installation
-
-```bash
-pip install -r requirements.txt
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -X utf8 -m nbconvert --to notebook --execute --ExecutePreprocessor.kernel_name=jiyufit-local --ExecutePreprocessor.timeout=1500 jiyufit_modele_concurrentiel.ipynb --output executed-corrected.ipynb --output-dir artifacts
 ```
 
-## Utilisation
+Les sorties recalculées sont dans `artifacts/executed-corrected.ipynb` ; les
+prévisions et scores sont exportés par la section XXIX dans
+`artifacts/backtest-predictions.csv` et `artifacts/backtest-scores.csv`.
+Le notebook source reste sans sorties périmées. `.venv/`, `artifacts/` et les
+caches Python sont exclus de Git. Une assertion en échec interrompt la
+commande avec un code de sortie non nul.
 
-Ouvrir `jiyufit_modele_concurrentiel.ipynb` dans Jupyter ou Google Colab, puis exécuter toutes les cellules dans l'ordre. Toutes les sections doivent se terminer sans erreur d'assertion.
+## Linux, macOS et CI
 
-## Limites et travaux restants
+```bash
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m nbconvert --to notebook --execute --ExecutePreprocessor.timeout=1500 jiyufit_modele_concurrentiel.ipynb --output executed-corrected.ipynb --output-dir artifacts
+```
 
-- **Calibration** : les sections XXVII–XXIX corroborent la brique dynamique sur trois duels réels du secteur fitness (via des proxys d'attention, pas des mesures directes de capture), avec un `r` sectoriel poolé ≈ 0,93 — régime stable mais proche de la frontière `r = 1`, en particulier pour le marché des agrégateurs (celui de JiyuFit). Les paramètres propres à JiyuFit restent à estimer selon le protocole de la section XXVI. Les seuils critiques (`r* = 2`, `r*(κ)`) ne sont pas testés empiriquement — aucun des marchés observés n'a visité le régime instable.
-- **Dynamique à `n` joueurs** : l'extension `n > 2` est établie au niveau statique (équilibre, section XXIV) ; `simulate(...)` reste un duel.
-- **Stochasticité** : la dynamique concurrentielle (duel) reste déterministe — pas de chocs aléatoires ni d'intervalles de confiance sur les trajectoires de parts de marché. La stochasticité introduite aux sections XXX–XXXIII porte sur un **autre objet** : les taux de remplissage sous garantie de fréquentation (facteur commun, persistance, queues épaisses). Les deux briques ne sont pas encore couplées.
-- **Stratégies mixtes asymétriques** : la section XXIII couvre le cas symétrique (le seul pour lequel la littérature fournit un oracle exact) ; le cas mixte asymétrique reste ouvert.
+Les dépendances scientifiques seules restent dans `requirements.txt`.
+`requirements-dev.txt` ajoute l'exécution Jupyter utilisée localement et en CI.
+
+## Suivi d'une ville
+
+Le [contrôle de qualité et les imports financiers](docs/QUALITE_ET_IMPORTS.md)
+ajoutent un manifeste lié au CSV par SHA-256 et un journal mensuel rapproché.
+Les déclarations métier seules ne suffisent plus à obtenir une G2 verte.
+Les commandes d'audit, formats vierges et limites sont documentés dans ce guide.
+
+Un [extracteur PostgreSQL en lecture seule](docs/CONSTITUTION_HISTORIQUE_REEL.md)
+produit des instantanés agrégés et traçables. La base locale a été extraite ;
+ses données de développement ne sont pas qualifiées comme historique réel.
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 outils/suivi_ville.py data/basicfit_vs_fitnesspark_attention_mensuelle.csv --png artifacts/suivi-corrige.png
+```
+
+Le coefficient par défaut est un scénario, pas une estimation locale.
+Les options de calibration, la cible de part et le JSON des preuves métier
+sont décrits dans la [stratégie et le dispositif de mesure](docs/STRATEGIE_EXPANSION_MESURE.md).
+Sans mesures clients, marge positive, rétention, capacité, budget et
+calibration documentés, l'outil ne délivre pas de feu vert d'expansion.
+
+## Limites restantes
+
+- Les trois séries fournies ne remplacent pas une collecte indépendante
+  et reproductible, ni les données propres à JiyuFit.
+- Le bootstrap par blocs et HAC restent conditionnels à leurs hypothèses ;
+  leur validité n'est pas garantie au voisinage de l'unité ou sous rupture.
+- La dynamique à n joueurs, les stratégies mixtes asymétriques et le
+  couplage concurrence/garantie actuarielle ne sont pas implémentés.
+- L'optimalité du rythme d'expansion et l'effet causal du marketing sur r
+  doivent être évalués par des données et expériences adaptées.

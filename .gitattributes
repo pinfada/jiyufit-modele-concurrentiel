@@ -1,0 +1,2 @@
+# Preserve exact bytes of public datasets checked against provenance SHA-256.
+data/public/**/*.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol

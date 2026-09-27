@@ -1,195 +1,264 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""Outil de pilotage JiyuFit — suivi de trajectoire concurrentielle par ville.
+"""Suivi conditionnel ; phi (persistance) n'identifie pas le r de Tullock.
 
-Lit une série mensuelle au format du protocole (Section XXVI, option 1) :
-
-    mois,acteur_J,acteur_m
-    2027-01,340,910
-    ...
-
-où `acteur_J` est la mesure mensuelle de JiyuFit (idéalement : clients captés ;
-à défaut : proxy d'attention) et `acteur_m` celle du rival désigné de la ville.
-
-Produit un diagnostic fondé sur le modèle validé (Sections XXVII-XXIX du
-notebook) : position sur la trajectoire, plateau prédit avec incertitude,
-temps restant jusqu'au plateau, verdicts de gates (G1 lancement, G2 ouverture
-de la ville suivante), et alerte de dérive de la sensibilité r.
-
-Usage :
-    python outils/suivi_ville.py data/ville_XXX.csv [--r-secteur 0.926]
-        [--gate2-tolerance 0.05] [--png rapport.png]
-
-Le r sectoriel par défaut (0.926) est l'estimation poolée IV sur 282 mois de
-trois duels réels (Section XXIX). Le réestimer quand JiyuFit aura ses propres
-données longues.
+L'expansion exige une traction suffisante, une calibration locale et des
+preuves métier. Documentation : docs/STRATEGIE_EXPANSION_MESURE.md.
 """
 import argparse
-import csv
+import json
+from pathlib import Path
 import sys
-
 import numpy as np
+from scipy.special import expit, logit
 
-R_SECTEUR_DEFAUT = 0.926          # Section XXIX : IV poolé, 3 duels, 282 mois
-R_BANDE = (0.85, 0.98)            # bande d'incertitude propagée sur le plateau
-MIN_MOIS_DIAG = 8                 # en deçà : collecte seulement, pas de diagnostic
-MIN_MOIS_R_LOCAL = 30             # en deçà : r local non estimable, on garde le sectoriel
+if __package__ in (None, ''):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from outils.donnees import lire_duel
+from outils.inference import iv_diagnostic, moyenne_hac, ols_hac, serie_finie
+from outils.qualite import auditer_source
+from outils.historique_comptable import construire_historique
+
+PHI_SCENARIO_DEFAUT = 0.926  # Arrondi historique descriptif, pas une constante.
+R_SECTEUR_DEFAUT = PHI_SCENARIO_DEFAUT  # Ancien nom conservé pour compatibilité.
+MIN_MOIS_DIAG = 8
+MIN_MOIS_R_LOCAL = 30
 
 
 def charger(path):
-    with open(path, newline='', encoding='utf-8') as f:
-        rows = list(csv.DictReader(f))
-    if not rows:
-        sys.exit(f"ERREUR : {path} est vide")
-    for col in ('mois', 'acteur_J', 'acteur_m'):
-        if col not in rows[0]:
-            sys.exit(f"ERREUR : colonne '{col}' absente (attendu : mois,acteur_J,acteur_m)")
-    mois = [r['mois'] for r in rows]
-    vJ = np.array([float(r['acteur_J']) for r in rows])
-    vm = np.array([float(r['acteur_m']) for r in rows])
-    if np.any(vJ < 0) or np.any(vm < 0) or np.any(vJ + vm <= 0):
-        sys.exit("ERREUR : valeurs négatives ou mois sans aucune activité")
-    # part de capture, bornée pour garder le logit fini sur les mois à zéro
-    s = np.clip(vJ / (vJ + vm), 1e-4, 1 - 1e-4)
-    return mois, s
+    months, shares, clipped = lire_duel(path)
+    if clipped:
+        print(f'ATTENTION : {clipped} parts bornées pour le logit ; sensibilité aux zéros.', file=sys.stderr)
+    return months, shares
 
 
-def diagnostiquer(s, r_secteur):
-    """Estime ln(c) à r sectoriel connu : L(t+1) = ln(c) + r L(t) + eps.
-    Renvoie le plateau prédit (avec bande d'incertitude statistique ET de
-    modèle via la bande sur r), la trajectoire prédite et son écart aux
-    observations récentes."""
-    L = np.log(s / (1 - s))
-    eps = L[1:] - r_secteur * L[:-1]
-    ln_c = float(eps.mean())
-    se_lnc = float(eps.std(ddof=1) / np.sqrt(len(eps))) if len(eps) > 1 else float('inf')
+def diagnostiquer(s, r_secteur=PHI_SCENARIO_DEFAUT, phi_interval=None):
+    """Scénario AR(1) ; intercept réestimé à chaque phi de l'enveloppe.
 
-    def plateau(lc, r):
-        return 1.0 / (1.0 + np.exp(-lc / (1.0 - r)))
-
-    s_star = plateau(ln_c, r_secteur)
-    # bande : incertitude statistique sur ln(c) x bande de modèle sur r
-    coins = [plateau(ln_c + k * 1.96 * se_lnc, r)
-             for k in (-1, 1) for r in (R_BANDE[0], r_secteur, R_BANDE[1])]
-    s_lo, s_hi = min(coins), max(coins)
-
-    # trajectoire prédite depuis le 1er mois, et position actuelle vs prédite
-    pred = [s[0]]
-    cur = L[0]
-    for _ in range(len(s) - 1):
-        cur = ln_c + r_secteur * cur
-        pred.append(1.0 / (1.0 + np.exp(-cur)))
-    pred = np.array(pred)
-    ecart_recent = float(np.mean(s[-3:] - pred[-3:])) if len(s) >= 3 else float('nan')
-
-    # temps restant : l'écart de logit au point fixe décroît au rythme r par
-    # mois ; nombre de mois pour le ramener sous 0.1 (part à ~2 pts du plateau)
-    L_star = ln_c / (1.0 - r_secteur)
-    gap = abs(L[-1] - L_star)
-    mois_restants = (0 if gap <= 0.1
-                     else int(np.ceil(np.log(0.1 / gap) / np.log(r_secteur))))
-    return dict(ln_c=ln_c, se_lnc=se_lnc, s_star=s_star, s_lo=s_lo, s_hi=s_hi,
-                pred=pred, ecart_recent=ecart_recent, L=L, L_star=L_star,
-                mois_restants=mois_restants)
+    Bande HAC asymptotique à phi fixé ; enveloppe de sensibilité si un
+    intervalle local est fourni, pas un IC joint. Si l'intervalle rencontre
+    phi >= 1, aucun plateau stationnaire robuste n'est annoncé.
+    """
+    s = serie_finie(s, MIN_MOIS_DIAG)
+    if np.any((s <= 0) | (s >= 1)):
+        raise ValueError('Les parts doivent être strictement entre 0 et 1')
+    phi = float(r_secteur)
+    if not np.isfinite(phi) or not 0 < phi < 1:
+        raise ValueError('Le scénario de convergence exige 0 < phi < 1')
+    if phi_interval is not None:
+        lo, hi = map(float, phi_interval)
+        if not np.isfinite([lo, hi]).all() or lo > hi or not lo <= phi <= hi:
+            raise ValueError('Intervalle de phi fini, ordonné et contenant le scénario requis')
+        phi_interval = (lo, hi)
+    L = logit(s)
+    intercept, se = moyenne_hac(L[1:] - phi*L[:-1])
+    equilibrium = intercept/(1-phi)
+    stationary = phi_interval is not None and 0 < phi_interval[0] <= phi_interval[1] < 1
+    grid = np.linspace(*phi_interval, 101) if stationary else [phi]
+    bounds = []
+    for candidate in grid:
+        a, error = moyenne_hac(L[1:] - candidate*L[:-1])
+        bounds.extend(expit((a + np.array([-1, 1])*1.96*error)/(1-candidate)))
+    current, pred = L[0], [s[0]]
+    for _ in range(len(s)-1):
+        current = intercept + phi*current
+        pred.append(expit(current))
+    pred = np.asarray(pred)
+    gap = abs(L[-1]-equilibrium)
+    remaining = 0 if gap <= .1 else int(np.ceil(np.log(.1/gap)/np.log(phi)))
+    return dict(ln_c=intercept, se_lnc=se, s_star=float(expit(equilibrium)),
+                s_lo=float(min(bounds)), s_hi=float(max(bounds)), phi=phi,
+                phi_interval=phi_interval, plateau_identifiable=stationary,
+                pred=pred, ecart_recent=float(np.mean(s[-3:]-pred[-3:])),
+                L=L, L_star=equilibrium, mois_restants=remaining)
 
 
 def alerte_r(s):
-    """Dérive de sensibilité : r local (OLS, plancher) et IV si série assez
-    longue. r IV localement >= 1 = signal d'entrée en zone instable."""
+    """Ancien nom : diagnostic de phi, PAS du r structurel."""
     if len(s) < MIN_MOIS_R_LOCAL:
         return None
-    L = np.log(s / (1 - s))
-    y, X = L[1:], L[:-1]
-    xb = np.column_stack([np.ones(len(y)), X])
-    beta, *_ = np.linalg.lstsq(xb, y, rcond=None)
-    num = np.cov(L[2:], L[:-2])[0, 1]
-    den = np.cov(L[1:-1], L[:-2])[0, 1]
-    r_iv = num / den if abs(den) > 1e-12 else float('nan')
-    return dict(r_ols=float(beta[1]), r_iv=float(r_iv))
+    L = logit(s)
+    diagnostic = iv_diagnostic(L)
+    try:
+        beta, _, _ = ols_hac(L[1:], np.column_stack((np.ones(len(L)-1), L[:-1])))
+        phi_ols = float(beta[1])
+    except ValueError:
+        phi_ols = float('nan')
+    return dict(diagnostic, phi_ols=phi_ols)
 
 
-def verdict_gates(s, d, tol_g2):
-    """G1 (traction) : la part monte et le plateau prédit dépasse nettement le
-    point de départ. G2 (ouvrir la ville suivante) : la part est à moins de
-    tol_g2 du plateau prédit OU la trajectoire observée colle à la prédiction."""
-    g1 = bool(s[-1] > s[0] and d['s_star'] > s[0] + 0.05)
-    proche_plateau = bool(abs(s[-1] - d['s_star']) <= tol_g2)
-    sur_trajectoire = bool(abs(d['ecart_recent']) <= tol_g2)
-    g2 = bool(proche_plateau or (sur_trajectoire and d['mois_restants'] <= 6))
-    return g1, g2, proche_plateau, sur_trajectoire
+def valider_metier(metier):
+    if not isinstance(metier, dict):
+        raise ValueError('Les critères métier doivent être un objet JSON')
+    keys = {'mesure', 'marge_contributive_mensuelle', 'retention_validee',
+            'capacite_validee', 'budget_expansion_valide', 'calibration_locale_validee'}
+    if set(metier)-keys:
+        raise ValueError(f'Critères inconnus : {sorted(set(metier)-keys)}')
+    if 'mesure' in metier and metier['mesure'] not in ('clients', 'attention'):
+        raise ValueError('mesure doit valoir clients ou attention')
+    for key in keys-{'mesure', 'marge_contributive_mensuelle'}:
+        if key in metier and type(metier[key]) is not bool:
+            raise ValueError(f'{key} doit être un booléen JSON')
+    if 'marge_contributive_mensuelle' in metier:
+        margin = metier['marge_contributive_mensuelle']
+        if type(margin) not in (int, float) or not np.isfinite(margin):
+            raise ValueError('La marge contributive doit être un nombre fini')
+    return metier
+
+
+def evaluer_gates(s, d, tol_g2=.05, part_cible=.5, metier=None, *, source=None, comptabilite=None):
+    """G2 : rouge si échec, indéterminée si preuve manquante/incertaine.
+
+    La cible de 50 % est un choix configurable, pas un seuil scientifique.
+    """
+    if not np.isfinite(tol_g2) or not 0 < tol_g2 < 1:
+        raise ValueError('La tolérance doit être entre 0 et 1')
+    if not np.isfinite(part_cible) or not 0 < part_cible < 1:
+        raise ValueError('La part cible doit être entre 0 et 1')
+    s = serie_finie(s, MIN_MOIS_DIAG)
+    metier = valider_metier({} if metier is None else metier)
+    initial, recent = float(np.mean(s[:3])), float(np.mean(s[-3:]))
+    g1 = bool(recent > initial and d['s_star'] > initial+.05)
+    near = bool(abs(recent-d['s_star']) <= tol_g2)
+    on_track = bool(abs(d['ecart_recent']) <= tol_g2)
+    failed, missing = [], []
+    if not source or not source.get('exploitable_clients'):
+        missing.append('provenance clients non établie pour le CSV exact')
+    if source and source.get('exploitable_clients'):
+        territory = source['manifeste']['territoire']
+        end = source['fin']
+        year, month = map(int, end.split('-'))
+        last = year*12+month-1
+        expected = [f'{i//12:04d}-{i%12+1:02d}' for i in range(last-2, last+1)]
+        rows = {r['mois']: r for r in (comptabilite or {}).get('historique', [])
+                if r['territoire'] == territory}
+        for period in expected:
+            row = rows.get(period)
+            if not row or not row['rapproche']:
+                missing.append('historique financier non rapproché : ' + period)
+            elif row['marge_apres_acquisition_centimes'] <= 0:
+                failed.append('marge après acquisition non positive : ' + period)
+        current = rows.get(end)
+        if current and current['rapproche']:
+            declared = metier.get('marge_contributive_mensuelle')
+            if declared is not None and not np.isclose(
+                    declared, current['marge_apres_acquisition_centimes']/100,
+                    rtol=0, atol=.005):
+                failed.append('marge déclarée incohérente avec le journal rapproché')
+    else:
+        missing.append('historique financier non rattaché à un territoire et une période vérifiés')
+    if not g1:
+        failed.append('traction G1 insuffisante')
+    if d['s_star'] < part_cible:
+        failed.append('plateau du scénario inférieur à la cible choisie')
+    if not (on_track and (near or d['mois_restants'] <= 6)):
+        failed.append('trajectoire ou convergence insuffisante')
+    if not d['plateau_identifiable']:
+        missing.append('intervalle local stationnaire de phi absent ou non concluant')
+    elif d['s_lo'] < part_cible:
+        missing.append('incertitude sur le plateau : borne basse sous la cible')
+    if metier.get('mesure') != 'clients':
+        missing.append('mesure directe des clients nécessaire ; attention seule insuffisante')
+    checks = {'retention_validee': 'rétention', 'capacite_validee': 'capacité opérationnelle',
+              'budget_expansion_valide': "budget d'expansion",
+              'calibration_locale_validee': 'calibration locale et qualité des données'}
+    for key, label in checks.items():
+        if key not in metier:
+            missing.append('information manquante : ' + label)
+        elif not metier[key]:
+            failed.append(label + ' non validée')
+    margin = metier.get('marge_contributive_mensuelle')
+    if margin is None:
+        missing.append('marge contributive mensuelle manquante')
+    elif margin <= 0:
+        failed.append('marge contributive mensuelle non positive')
+    g2 = False if failed else (None if missing else True)
+    return dict(g1=g1, g2=g2, proche_plateau=near, sur_trajectoire=on_track,
+                echecs=failed, manquants=missing)
+
+
+def verdict_gates(s, d, tol_g2, *, part_cible=.5, metier=None, source=None, comptabilite=None):
+    v = evaluer_gates(s, d, tol_g2, part_cible, metier, source=source, comptabilite=comptabilite)
+    return tuple(v[k] for k in ('g1', 'g2', 'proche_plateau', 'sur_trajectoire'))
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Suivi de trajectoire concurrentielle par ville")
-    ap.add_argument('csv', help="série mensuelle : mois,acteur_J,acteur_m")
-    ap.add_argument('--r-secteur', type=float, default=R_SECTEUR_DEFAUT)
-    ap.add_argument('--gate2-tolerance', type=float, default=0.05,
-                    help="écart de part toléré pour valider la gate G2 (défaut 0.05)")
-    ap.add_argument('--png', default=None, help="chemin du graphique de sortie (optionnel)")
-    args = ap.parse_args()
-
-    mois, s = charger(args.csv)
-    T = len(s)
-    print(f"=== Suivi de ville : {args.csv} ===")
-    print(f"{T} mois ({mois[0]} -> {mois[-1]}) | part actuelle : {s[-1]:.1%} "
-          f"(moyenne 3 mois : {s[-3:].mean():.1%})")
-
-    if T < MIN_MOIS_DIAG:
-        print(f"\n[COLLECTE] Moins de {MIN_MOIS_DIAG} mois de données : diagnostic "
-              f"différé, continuer la collecte.")
-        return
-
-    d = diagnostiquer(s, args.r_secteur)
-    print(f"\n--- Diagnostic (r sectoriel = {args.r_secteur:.3f}, Section XXIX) ---")
-    print(f"asymétrie estimée ln(c) = {d['ln_c']:+.3f} (± {1.96*d['se_lnc']:.3f})")
-    print(f"PLATEAU PRÉDIT : {d['s_star']:.1%}   [bande : {d['s_lo']:.1%} – {d['s_hi']:.1%}]")
-    print(f"écart récent observé - prédit (3 mois) : {d['ecart_recent']:+.3f}")
-    print(f"temps estimé jusqu'au plateau (90% du chemin) : ~{d['mois_restants']} mois")
-
-    g1, g2, proche, sur_traj = verdict_gates(s, d, args.gate2_tolerance)
-    print("\n--- Gates ---")
-    print(f"G1 traction   ({'VERTE' if g1 else 'ROUGE'}) : part en hausse et plateau "
-          f"prédit au-dessus du point de départ")
-    print(f"G2 expansion  ({'VERTE' if g2 else 'ROUGE'}) : "
-          f"{'au plateau' if proche else 'pas encore au plateau'}, "
-          f"{'sur' if sur_traj else 'hors'} trajectoire prédite"
-          + ("" if g2 else " -> NE PAS ouvrir la ville suivante"))
-    if d['s_star'] < 0.5:
-        print("ATTENTION : plateau prédit sous la parité — l'asymétrie c est "
-              "défavorable ; renforcer la densité/différenciation AVANT d'étendre "
-              "(répliquer maintenant répliquerait le déficit).")
-
-    al = alerte_r(s)
-    print("\n--- Surveillance de la sensibilité r ---")
-    if al is None:
-        print(f"série < {MIN_MOIS_R_LOCAL} mois : r local non estimable, "
-              f"sectoriel conservé (à réévaluer plus tard)")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('csv', help='série mensuelle : mois,acteur_J,acteur_m')
+    parser.add_argument('--phi-scenario', '--r-secteur', dest='phi', type=float,
+                        default=PHI_SCENARIO_DEFAUT, help='persistance conditionnelle, 0 < phi < 1')
+    parser.add_argument('--phi-interval', nargs=2, type=float, metavar=('MIN', 'MAX'),
+                        help='intervalle issu de la calibration locale, à documenter')
+    parser.add_argument('--gate2-tolerance', type=float, default=.05)
+    parser.add_argument('--part-cible', type=float, default=.5, help='cible de gouvernance')
+    parser.add_argument('--criteres-metier', type=Path, help='preuves métier JSON documentées')
+    parser.add_argument('--source', type=Path, help='manifeste de provenance du CSV, avec empreinte SHA-256')
+    parser.add_argument('--journal', type=Path, help='mouvements financiers de gestion en centimes EUR')
+    parser.add_argument('--couverture', type=Path, help='périodes et totaux de contrôle du journal')
+    parser.add_argument('--png', type=Path)
+    args = parser.parse_args()
+    try:
+        if not 0 < args.phi < 1 or not 0 < args.gate2_tolerance < 1 or not 0 < args.part_cible < 1:
+            raise ValueError('phi, tolérance et cible doivent être strictement entre 0 et 1')
+        months, s = charger(args.csv)
+        source = auditer_source(args.csv, args.source)
+        if bool(args.journal) != bool(args.couverture):
+            raise ValueError('--journal et --couverture doivent être fournis ensemble')
+        comptabilite = construire_historique(args.journal, args.couverture) if args.journal else None
+        metier = json.loads(args.criteres_metier.read_text(encoding='utf-8-sig')) if args.criteres_metier else {}
+        valider_metier(metier)
+        print(f'=== Suivi conditionnel : {args.csv} ===')
+        print(f'{len(s)} mois ({months[0]} → {months[-1]}) | part récente : {s[-3:].mean():.1%}')
+        if len(s) < MIN_MOIS_DIAG:
+            print(f'[COLLECTE] Au moins {MIN_MOIS_DIAG} mois requis ; G1/G2 non évaluées.')
+            return
+        d = diagnostiquer(s, args.phi, args.phi_interval)
+        v = evaluer_gates(s, d, args.gate2_tolerance, args.part_cible, metier,
+                         source=source, comptabilite=comptabilite)
+    except (OSError, ValueError, TypeError) as exc:
+        parser.error(str(exc))
+    print(f'Scénario phi = {args.phi:.3f} ; ne mesure pas la sensibilité concurrentielle r.')
+    print('Provenance : ' + ('cohérente avec une mesure clients déclarée' if source['exploitable_clients'] else 'non validée pour une décision clients'))
+    for problem in source['problemes']:
+        print('  - ' + problem)
+    print(f"Intercept = {d['ln_c']:+.3f} (± {1.96*d['se_lnc']:.3f}, HAC approximatif)")
+    print(f"PLATEAU CONDITIONNEL : {d['s_star']:.1%}")
+    label = 'enveloppe de sensibilité, pas IC joint' if d['plateau_identifiable'] else 'bande à phi fixé seulement'
+    print(f"[{d['s_lo']:.1%} ; {d['s_hi']:.1%}] — {label}")
+    print(f"Temps du scénario jusqu'à un écart de logit ≤ 0,1 : {d['mois_restants']} mois")
+    print(f"G1 traction : {'VERTE' if v['g1'] else 'ROUGE'}")
+    state = 'INDÉTERMINÉE' if v['g2'] is None else ('VERTE' if v['g2'] else 'ROUGE')
+    print(f'G2 expansion : {state} (cible choisie : {args.part_cible:.0%})')
+    for reason in v['echecs'] + v['manquants']:
+        print('  - ' + reason)
+    local = alerte_r(s)
+    if local is None:
+        print(f'Phi local : série < {MIN_MOIS_R_LOCAL} mois, diagnostic IV différé.')
     else:
-        etat = 'ALERTE : zone instable possible' if al['r_iv'] >= 1.0 else 'ok (r < 1)'
-        print(f"r local OLS (plancher) = {al['r_ols']:.3f} | r local IV = {al['r_iv']:.3f} -> {etat}")
-
+        print(f"Phi OLS = {local['phi_ols']:.3f} ; IV lag2 = {local['phi_iv']:.3f}")
+        intervals = ' ∪ '.join(f'[{lo:.3f} ; {hi:.3f}]' for lo, hi in local['confidence_set']) or 'vide'
+        print(f'Ensemble Anderson–Rubin/HAC (asymptotique) : {intervals}')
+        print(f"Première étape F HAC = {local['first_stage_f']:.2f} (diagnostic, pas certification)")
+        print('Proximité de 1, instrument faible ou proxy bruité : audit local requis.')
     if args.png:
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots(figsize=(9, 4.5))
-        x = np.arange(T)
-        ax.plot(x, s, 'ko-', ms=3, lw=1, label='part observée')
-        ax.plot(x, d['pred'], '-', color='#2b8cbe', lw=2, label='trajectoire prédite (modèle)')
-        ax.axhline(d['s_star'], color='#2b8cbe', ls=':', lw=1.2,
-                   label=f"plateau prédit {d['s_star']:.1%}")
-        ax.fill_between(x, d['s_lo'], d['s_hi'], color='#2b8cbe', alpha=0.10,
-                        label='bande d\'incertitude du plateau')
-        ax.axhline(0.5, color='k', lw=0.5)
-        ticks = list(range(0, T, max(1, T // 10)))
-        ax.set_xticks(ticks)
-        ax.set_xticklabels([mois[i] for i in ticks], rotation=45, fontsize=8)
-        ax.set_ylabel('part de capture JiyuFit')
-        ax.set_title(f"Suivi de trajectoire — {args.csv}")
-        ax.legend(fontsize=8, loc='best')
-        plt.tight_layout()
-        plt.savefig(args.png, dpi=130)
-        print(f"\ngraphique écrit : {args.png}")
+        x = np.arange(len(s))
+        ax.plot(x, s, 'ko-', ms=3, label='part observée dans le duel')
+        ax.plot(x, d['pred'], color='#2b8cbe', label='scénario conditionnel')
+        ax.axhline(d['s_star'], color='#2b8cbe', ls=':', label='plateau du scénario')
+        ax.fill_between(x, d['s_lo'], d['s_hi'], alpha=.12, label=label)
+        ax.axhline(args.part_cible, color='k', lw=.6, label='cible choisie')
+        ticks = list(range(0, len(s), max(1, len(s)//10)))
+        ax.set_xticks(ticks, [months[i] for i in ticks], rotation=45, fontsize=8)
+        ax.set_ylabel('part dans le duel (clients ou attention selon la source)')
+        ax.set_title('Trajectoire conditionnelle — hypothèses à valider localement')
+        ax.legend(fontsize=7)
+        fig.tight_layout()
+        fig.savefig(args.png, dpi=130)
+        plt.close(fig)
+        print(f'Graphique écrit : {args.png}')
 
 
 if __name__ == '__main__':

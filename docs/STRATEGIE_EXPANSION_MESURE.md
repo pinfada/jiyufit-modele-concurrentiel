@@ -1,149 +1,139 @@
-# JiyuFit — Stratégie d'expansion et dispositif de mesure
+# JiyuFit — Expansion et dispositif de mesure
 
-Stratégie opérationnelle dérivée du modèle concurrentiel **validé empiriquement**
-(notebook, sections XXVII–XXIX : 3 duels réels, 282 mois). Chaque prescription
-cite la section qui la fonde. Ce document distingue explicitement ce qui est
-*établi par les données* de ce qui est *inféré de la mécanique du modèle*.
+Le modèle est un support de scénarios et d'expérimentation. Les trois séries
+d'attention permettent une exploration descriptive, pas une validation
+causale des prescriptions ci-dessous. Les
+[fondements scientifiques](FONDEMENTS_SCIENTIFIQUES.md) précisent les hypothèses.
 
-## 1. Fondements
+## 1. Statut des conclusions
 
-| Fait | Statut | Source |
-|---|---|---|
-| La capture suit une dynamique d'accumulation AR(1)-logit, R² = 0,84 sur duel réel | **établi** | XXVII |
-| La sensibilité `r` est une quasi-constante sectorielle ≈ 0,93 < 1 (P(r≥1) < 10⁻³) | **établi** (3 duels poolés) | XXIX |
-| Régime stable : un challenger peut monter ; le plateau d'arrivée est prédictible à ±2,5 pts | **établi** | XXVII–XXIX |
-| Les agrégateurs comparables convergent vers la parité ~50/50 ; seule l'asymétrie durable `c` déplace le plateau | **établi** (2 duels d'agrégateurs) | XXIX |
-| Le secteur opère à <10 % de la frontière `r = 1` (guerre d'usure destructrice au-delà) | **établi** | XXVIII–XXIX, XVII–XXIII |
-| Le capital de réseau et la valeur biface sont locaux → densité par ville = levier de `c` | *inféré* de la structure du modèle | III, VII, XXVI |
-| Expansion séquentielle > simultanée (l'effort divisé affaiblit chaque duel) | *inféré* | V, XXII |
+| Proposition | Statut corrigé |
+|---|---|
+| Un AR(1)-logit ajuste les séries fournies | Résultat descriptif reproductible ; ne prouve pas la capture réelle |
+| Un coefficient commun aux trois duels | Hypothèse de pooling ; pas une constante sectorielle démontrée |
+| Plateau prévisible à ±2,5 points | Ancienne comparaison interne à l'échantillon ; pas une précision prospective garantie |
+| Agrégateurs destinés à converger à 50/50 | Non établi ; le ratio de deux proxys n'est pas la totalité du marché |
+| phi = 1 implique disparition du Nash pur | Faux rapprochement : persistance temporelle et sensibilité r sont distinctes |
+| Densifier une ville avant de répliquer | Hypothèse opérationnelle à tester, conditionnelle aux coûts et à la rétention |
+| Publicité ou promotions augmentent nécessairement r | Effet causal non identifié dans les données disponibles |
 
-## 2. La stratégie en quatre phases
+## 2. Ville pilote et collecte
 
-### Phase 0 — Instrumentation (avant le premier client)
+Définir la zone, les clients contestés et le rival de référence. Collecter
+chaque mois `mois,acteur_J,acteur_m`, avec des définitions comparables et une
+source traçable. L'outil exige des mois consécutifs, triés et sans doublon,
+des valeurs finies et aucune ligne d'activité totale nulle. Les parts nulles
+ou unitaires sont bornées pour le logit et signalées explicitement.
 
-1. Pour chaque ville visée : définir la **zone** et le **rival de référence**
-   (l'acteur qui conteste les mêmes clients).
-2. Mettre en place la collecte mensuelle au format standard (un CSV par ville,
-   `data/README.md`) : `mois, acteur_J, acteur_m` — idéalement clients captés,
-   à défaut proxy d'attention.
-3. Collecter aussi, pour la calibration complète (section XXVI) : CAC, churn
-   mensuel par segment, dépense d'acquisition, partenaires actifs.
+Mesurer aussi la marge contributive mensuelle, le CAC, la rétention par
+cohorte, les dépenses d'acquisition et les ressources opérationnelles. Pour
+les deux côtés de la plateforme, suivre séparément utilisateurs et
+prestataires : prix nets, coûts, partenaires réellement disponibles,
+participation à plusieurs plateformes et transactions réalisées. Court/long
+terme sont des segments de clientèle, pas les deux côtés de la plateforme.
 
-> Chaque mois de collecte raccourcit le délai avant que la trajectoire soit
-> évaluable. La collecte est le premier investissement stratégique, pas une
-> tâche de reporting.
+Tester la densité de l'offre et l'acquisition par cohortes ou zones
+comparables. La priorité d'un investissement doit venir de son effet mesuré
+sur la contribution et la rétention, pas de l'affirmation que tout euro
+dépensé en différenciation vaut plus qu'un euro de marketing.
 
-### Phase 1 — Ville pilote : la densité avant la demande
+## 3. Scénarios et incertitude
 
-- **Construire l'offre d'abord** : atteindre un seuil de densité de partenaires
-  (salles + hôtels) *avant* d'engager le marketing lourd. La valeur biface est
-  locale : un effort d'acquisition sur une offre creuse achète des membres qui
-  churnent (section III).
-- Fixer le seuil de densité par rapport au **rival de référence** (l'objectif
-  n'est pas un chiffre absolu mais la comparaison : l'offre JiyuFit doit être
-  crédible face à la sienne dans la zone).
-- **Gate G1 (traction), vers le mois 6–8** : part de capture en hausse et
-  plateau prédit au-dessus du point de départ (mesuré par l'outil, §4). G1
-  rouge → corriger l'offre/le positionnement avant tout budget supplémentaire.
-
-### Phase 2 — Conduite du duel : investir en `c`, jamais en escalade
-
-- La parité est l'attracteur par défaut du marché des agrégateurs (XXIX). Pour
-  un plateau > 50 %, il faut une asymétrie durable `c` : densité d'offre,
-  sport sans abonnement, gouvernance — ce que le rival ne copie pas en un
-  trimestre.
-- **Interdits** (ils poussent `r` vers la zone destructrice, XXVIII–XXIX) :
-  surenchère publicitaire frontale, promotions en miroir du rival, guerre de
-  prix. Le secteur est à <10 % de la frontière ; au-delà, même le gagnant ne
-  gagne rien (XXIII : paiement espéré nul).
-- Si le **plateau prédit < 50 %** : le déficit est dans `c`. Le corriger DANS
-  la ville pilote — l'étendre à d'autres villes répliquerait le déficit.
-
-### Phase 3 — Expansion séquentielle, ville par ville
-
-- **Gate G2 (expansion)** : ouvrir la ville N+1 seulement quand la ville N est
-  au plateau prédit (ou sur trajectoire avec < 6 mois restants) — verdict
-  rendu par l'outil (§4).
-- Répliquer le playbook (seuils de densité, séquence offre → demande) ; le
-  temps de convergence observé est de l'ordre de 12–30 mois par ville
-  (constante de temps du secteur : 1/(1−r) ≈ 14 mois).
-- Ne jamais avoir plus de villes « en conquête » que ce que l'effort marketing
-  permet de soutenir *sans diluer les duels en cours* (V, XXII).
-
-## 3. Règles de conduite permanentes
-
-1. **`c` avant `x`** : tout euro qui augmente la différenciation durable vaut
-   plus qu'un euro d'effort marketing brut (la loi d'asymétrie XVIII :
-   `P* = κ/(1+κ)`).
-2. **Surveiller `r`** en continu (outil, §4) : c'est la jauge de risque du
-   marché entier. `r` local IV ≥ 1 = signal d'entrée en zone instable →
-   désescalader, pas surenchérir.
-3. **Mettre à jour le `r` sectoriel** ~1×/an en rafraîchissant les séries des
-   duels de référence (`data/`) et en réexécutant la section XXIX.
-4. **Ne pas sur-réagir au mois-à-mois** : le modèle (et les données) montrent
-   que le bruit mensuel est fort et saisonnier (creux d'été, XXVIII). La
-   maille de décision est le trimestre.
-
-## 4. Le dispositif de mesure
-
-### 4.1 L'outil : `outils/suivi_ville.py`
-
-```bash
-python outils/suivi_ville.py data/ville_lyon.csv --png rapport_lyon.png
+```powershell
+.\.venv\Scripts\python.exe -X utf8 outils/suivi_ville.py data/ville_lyon.csv --png artifacts/lyon.png
 ```
 
-Entrée : le CSV mensuel de la ville. Sortie :
+Sans calibration locale, le coefficient `phi = 0.926` est un scénario
+historique descriptif. Il ne constitue pas une sensibilité concurrentielle
+mesurée ni une constante sectorielle. `--phi-scenario` permet de le modifier ;
+`--r-secteur` reste un alias de compatibilité, avec la même interprétation.
 
-| Sortie | Interprétation | Décision associée |
+Le point fixe et le temps de convergence sont conditionnels à ce scénario.
+Le temps annoncé ramène l'écart de logit sous 0,1 (au plus 2,5 points de part),
+ce qui n'est pas « 90 % du chemin ». Aucune durée universelle d'expansion par
+ville n'en découle.
+
+`--phi-interval MIN MAX` reçoit une plage provenant d'une calibration locale
+documentée. L'intercept et son erreur HAC sont réestimés pour chacun des
+101 scénarios de l'enveloppe. Celle-ci n'est pas un intervalle de confiance
+joint à 95 %. Sans plage locale ou si elle touche phi >= 1, aucun plateau
+stationnaire suffisamment étayé n'est retenu pour une décision verte.
+
+À partir de 30 mois, un diagnostic OLS/IV et un ensemble Anderson–Rubin/HAC
+sont affichés. Un résultat non borné, proche de l'unité ou sensible au bruit
+appelle une revue du modèle et des données ; il ne dicte pas une baisse de
+marketing. HAC et IV ne garantissent pas une inférence fiable près de l'unité.
+
+## 4. Gates corrigées
+
+**G1 — traction descriptive.** La moyenne des trois derniers mois dépasse
+celle des trois premiers, et le plateau du scénario dépasse le niveau
+initial de plus de cinq points. Ce seuil est une convention opérationnelle,
+pas un test de significativité ni une preuve de rentabilité. Au moins huit
+mois de données sont requis pour le diagnostic.
+
+**G2 — expansion.** Un feu vert exige simultanément :
+
+1. G1 verte ;
+2. une trajectoire récente compatible avec le scénario et soit une proximité
+   au plateau, soit au plus six mois de convergence conditionnelle restants ;
+3. un plateau et la borne basse de son enveloppe au-dessus de la cible choisie ;
+4. une plage locale de phi entièrement dans `(0,1)` et une calibration validée ;
+5. des mesures de clients, pas seulement de l'attention ;
+6. une marge contributive mensuelle positive ;
+7. une rétention, une capacité opérationnelle et un budget d'expansion validés.
+
+Un critère échoué donne **ROUGE**. Une preuve manquante ou une incertitude
+non levée donne **INDÉTERMINÉE**, sans feu vert automatique. Chaque motif est
+affiché. Une part constante de 10 % ne peut donc plus autoriser l'expansion.
+
+La cible par défaut de 50 % est un choix de gouvernance configurable via
+`--part-cible`. Une activité rentable peut viser moins de 50 % d'un duel ;
+la littérature citée ne fournit pas ce seuil universel. La tolérance de
+trajectoire (cinq points par défaut) est également configurable.
+
+## 5. Critères métier explicites
+
+Le fichier JSON passé à `--criteres-metier` contient les champs suivants :
+
+| Champ | Valeur attendue pour une G2 verte | Preuve à conserver lors de la revue |
 |---|---|---|
-| `ln(c)` estimé ± IC | asymétrie de JiyuFit face au rival | `ln(c) > 0` = différenciation qui paie |
-| **Plateau prédit** + bande | point d'arrivée de la trajectoire | plateau < 50 % → corriger `c` avant d'étendre |
-| Écart récent obs. − prédit | la ville suit-elle sa trajectoire ? | écart persistant → chercher la cause (offre, rival, données) |
-| Temps restant au plateau | horizon de convergence | planification de la ville suivante |
-| **Gate G1 / G2** | verdicts automatiques | cf. phases 1 et 3 |
-| `r` local (OLS + IV, si ≥ 30 mois) | dérive de sensibilité | IV ≥ 1 → alerte désescalade |
+| `mesure` | `clients` | Définitions, extraction et période communes aux acteurs |
+| `marge_contributive_mensuelle` | Nombre strictement positif | Recettes moins coûts variables et acquisition récurrente attribuables |
+| `retention_validee` | `true` | Cohortes et seuil de rétention fixés avant revue |
+| `capacite_validee` | `true` | Capacité de service et équipe disponibles |
+| `budget_expansion_valide` | `true` | Budget et trésorerie suffisants pour la ville suivante |
+| `calibration_locale_validee` | `true` | Audit des données, hypothèses et plage de phi |
 
-L'outil refuse de diagnostiquer sous 8 mois de données (collecte d'abord) et
-élargit honnêtement ses bandes d'incertitude sur séries courtes.
+Ces champs représentent une revue métier documentée ; le script ne vérifie
+pas à lui seul la véracité des déclarations. Les champs absents restent
+manquants. Les booléens doivent être des booléens JSON, pas les chaînes
+`"true"` ou `"false"`.
 
-### 4.2 Tableau de bord mensuel par ville
+```powershell
+.\.venv\Scripts\python.exe -X utf8 outils/suivi_ville.py data/ville_lyon.csv --phi-scenario 0.8 --phi-interval 0.72 0.88 --part-cible 0.4 --criteres-metier data/criteres_lyon.json
+```
 
-| KPI | Définition | Cadence | Cible / seuil | Fondement |
-|---|---|---|---|---|
-| Part de capture | clients gagnés J / (J + rival) | mensuel | trajectoire prédite ± 5 pts | XXVII |
-| Densité d'offre relative | partenaires actifs J / rival, même zone | mensuel | ≥ 1 avant marketing lourd | III (inféré) |
-| Plateau prédit | sortie outil | trimestriel | > 50 % | XXIX |
-| Churn mensuel (χ) | résiliations / base | mensuel | intrant calibration | XXVI |
-| CAC / dépense d'acquisition | coût par client capté | mensuel | intrant calibration (effort x) | XXVI |
-| `r` local / sectoriel | sortie outil + refresh XXIX | trim. / annuel | IV < 1 | XXVIII–XXIX |
+Les nombres de cette commande illustrent la syntaxe : ils ne sont pas une
+calibration de Lyon. Aucun fichier de critères prévalidés n'est fourni.
 
-### 4.3 Revue trimestrielle (rituel)
+## 6. Revue trimestrielle
 
-1. Ré-exécuter l'outil sur chaque ville active ; archiver les rapports.
-2. Comparer trajectoire observée vs prédite : un écart > 5 pts sur 2 trimestres
-   consécutifs invalide localement le diagnostic → réestimer `c`, vérifier le
-   rival de référence et la qualité des données.
-3. Statuer sur les gates (G1/G2) — les verdicts de l'outil se discutent, ne
-   s'ignorent pas silencieusement.
-4. Une fois ≥ 18 mois de données propres : basculer l'estimation de `r` du
-   sectoriel vers les données JiyuFit (protocole complet, section XXVI).
+### Contrôles désormais obligatoires pour G2
 
-## 5. Signaux d'alerte
+Les déclarations ci-dessus ne suffisent plus au feu vert. Le suivi exige
+également `--source` (manifeste clients lié au CSV exact), `--journal` et
+`--couverture` (mouvements financiers et totaux de contrôle). Les trois derniers
+mois doivent être rapprochés et positifs après acquisition, dans le territoire
+de la série. Ce délai est une convention de gouvernance, pas un résultat
+scientifique. La marge du dernier mois doit correspondre au JSON métier.
+Voir les [formats et contrôles exécutables](QUALITE_ET_IMPORTS.md).
 
-| Signal | Lecture | Réaction |
-|---|---|---|
-| `r` IV local ≥ 1 | marché local en zone instable possible | désescalader l'intensité marketing, renforcer `c` |
-| Plateau prédit < 50 % et stable | déficit structurel de différenciation | gel de l'expansion, chantier `c` |
-| Écart trajectoire persistant (> 2 trim.) | modèle localement invalide ou données faussées | audit données + rival de référence |
-| Part qui monte mais churn qui monte aussi | capture sans rétention (hors modèle de capture) | traiter la rétention avant de lire la part |
+Archiver les données et les sorties. Examiner les erreurs de prévision à
+1, 3 et 6 mois face aux références naïves ; comparer les mêmes périodes et
+horizons. Vérifier les changements de définition, saisonnalités, événements
+et rival de référence avant d'attribuer un écart à la concurrence.
 
-## 6. Limites de ce document
-
-- La validation empirique porte sur des **proxys d'attention**, pas sur la
-  capture réelle de clients — les données propres de JiyuFit lèveront cette
-  limite (et c'est le but de la Phase 0).
-- Le choix salles vs hôtels comme mix de densité est **hors du modèle** : à
-  arbitrer sur le terrain comme deux variantes de `c` à comparer.
-- La prescription « séquentiel plutôt que simultané » est une inférence de la
-  mécanique du modèle (effort divisé = duels affaiblis), pas un résultat
-  testé : la première paire de villes fournira le test réel.
+Décider de l'expansion avec les marges, la rétention et les capacités de la
+ville pilote. L'expansion séquentielle reste une hypothèse à comparer à
+d'autres rythmes, pas un optimum démontré par ce modèle.

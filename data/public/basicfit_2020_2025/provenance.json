@@ -1,0 +1,51 @@
+{
+  "entreprise": "Basic-Fit",
+  "relation_jiyufit": "concurrent indirect fitness",
+  "extraction_utc": "2026-09-27T20:19:55.403219+00:00",
+  "frequence": "trimestrielle",
+  "mesure": "abonnements en fin de trimestre, arrondis à 0.01 million",
+  "perimetre": "réseau Basic-Fit, ensemble des pays ; Clever Fit exclu en 2025",
+  "statut": "observations_publiees_par_entreprise",
+  "interpolation": false,
+  "source_csv_sha256": "96b8edc095cdb86c1b84b29ac37bb898a10ad0918fba0b0f6186f8136d6347d7",
+  "sources": [
+    {
+      "id": "basicfit-rapport-2021",
+      "url": "https://corporate.basic-fit.com/docs/Basic-Fit%20Annual%20Report%202021%20WEB?a=6UWq4tddgh8ofCiyWyeA8G",
+      "page_pdf": 26,
+      "section": "Membership development",
+      "sha256": "5c1ee8031c40acab81e0cd9bce958627f7363112f1a6dc183365ca8b76e5336a",
+      "cache": "annual-2021.pdf"
+    },
+    {
+      "id": "basicfit-rapport-2022",
+      "url": "https://corporate.basic-fit.com/docs/Basic-Fit_Annual_Report_2022_Pdf.pdf?a=59eFPFFX7yWrajhSZAdWuA",
+      "page_pdf": 23,
+      "section": "Membership development",
+      "sha256": "acf56988ad01b6f55abd49c72561b3f9520e7a9c22cd0831d2dd26d961acc358",
+      "cache": "annual-2022.pdf"
+    },
+    {
+      "id": "basicfit-rapport-2024",
+      "url": "https://corporate.basic-fit.com/docs/Basic-Fit%20Annual_Report_2024_Webversion.pdf?a=6YiUByKgbZ06bBQ3VnLkRj",
+      "page_pdf": 22,
+      "section": "Membership development",
+      "sha256": "2afabbf4bdd18d9589049f7adb704faf6c41f448c68421c21fb7fef6ea946701",
+      "cache": "annual-2024.pdf"
+    },
+    {
+      "id": "basicfit-rapport-2025",
+      "url": "https://annualreport.basic-fit.com/2025/mbr/business-and-financial-review/",
+      "page_pdf": null,
+      "section": "Membership development",
+      "sha256": "5fdd7bb3c8a456a192c3d09842aae2f19209d53a5fd042beb02fce3a9f29a404",
+      "cache": "annual-2025-review.html"
+    }
+  ],
+  "limites": [
+    "Pas une part de marché ni un nombre de clients uniques actifs.",
+    "Chocs COVID 2020-2021 et reprise ; expansion géographique et acquisitions.",
+    "Test rétrospectif avec rapports publiés après les périodes, pas backtest de millésimes temps réel.",
+    "Une entreprise unique ne permet pas de tester la capture concurrentielle de Tullock."
+  ]
+}
