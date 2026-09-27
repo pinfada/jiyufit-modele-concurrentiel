@@ -8,6 +8,7 @@ Modèle mathématique et simulation Python de la capture concurrentielle sur un 
 - `data/` — données empiriques figées (provenance documentée dans `data/README.md`), utilisées par les sections XXVII–XXIX.
 - `docs/STRATEGIE_EXPANSION_MESURE.md` — stratégie opérationnelle dérivée du modèle validé (expansion séquentielle à densité locale) et dispositif de mesure (KPI, gates, rituel trimestriel).
 - `outils/suivi_ville.py` — outil de pilotage : lit le CSV mensuel d'une ville et rend le diagnostic (plateau prédit, position sur trajectoire, gates G1/G2, alerte sur `r`).
+- `outils/calculateur_garantie/` — calculatrice autonome (un fichier HTML) de la garantie de fréquentation : gain d'une activité, prix de la couverture, seuil de rentabilité, portefeuille CSV. Voir son README.
 - `requirements.txt` — dépendances Python.
 - `.github/workflows/notebook-tests.yml` — CI : exécution complète du notebook (toutes les assertions) à chaque push.
 - `README.md` — ce document.
