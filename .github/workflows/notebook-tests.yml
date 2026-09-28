@@ -19,6 +19,10 @@ jobs:
           python-version: '3.12'
           cache: pip
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -26,6 +30,9 @@ jobs:
 
       - name: Test inference and city decisions
         run: python -m unittest discover -s tests -v
+
+      - name: Test standalone calculator
+        run: node --test outils/calculateur_garantie/tests/moteur.test.js
 
       - name: Execute notebook (all assertions)
         run: |

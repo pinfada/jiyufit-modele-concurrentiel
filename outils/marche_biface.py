@@ -16,6 +16,11 @@ class Parametres:
     compatibilite: float = .015
     recrutement_utilisateurs: float = 20
     recrutement_prestataires: float = 1
+    acquisition_seo_utilisateurs: float = 0
+    acquisition_seo_prestataires: float = 0
+    cout_seo_mensuel: float = 0
+    prime_garantie_prestataire: float = 0
+    complement_garantie_prestataire: float = 0
     effet_utilisateurs: float = .24
     effet_prestataires: float = .18
     attrition_utilisateurs: float = .08
@@ -60,22 +65,29 @@ def etape(utilisateurs, prestataires, p=Parametres()):
         raise ValueError('État supérieur au marché adressable')
     service = metrics['taux_service'] or 0.
     fill = metrics['remplissage'] or 0.
-    def entrees(stock, ceiling, paid, feedback):
+    def entrees(stock, ceiling, paid, feedback, seo):
         saturation = 1-stock/ceiling
         acquisition, organique = paid*saturation, feedback*stock*saturation
-        total = acquisition+organique
+        seo *= saturation
+        total = acquisition+organique+seo
         facteur = min(1., (ceiling-stock)/total) if total else 1.
-        return acquisition*facteur, organique*facteur
-    paid_u, organic_u = entrees(utilisateurs,p.marche_utilisateurs,p.recrutement_utilisateurs,p.effet_utilisateurs*service)
-    paid_s, organic_s = entrees(prestataires,p.marche_prestataires,p.recrutement_prestataires,p.effet_prestataires*fill)
-    next_u = utilisateurs*(1-p.attrition_utilisateurs)+paid_u+organic_u
-    next_s = prestataires*(1-p.attrition_prestataires)+paid_s+organic_s
-    revenu = p.prix_seance*p.commission*metrics['reservations']
+        return acquisition*facteur, organique*facteur, seo*facteur
+    paid_u, organic_u, seo_u = entrees(utilisateurs,p.marche_utilisateurs,p.recrutement_utilisateurs,p.effet_utilisateurs*service,p.acquisition_seo_utilisateurs)
+    paid_s, organic_s, seo_s = entrees(prestataires,p.marche_prestataires,p.recrutement_prestataires,p.effet_prestataires*fill,p.acquisition_seo_prestataires)
+    next_u = utilisateurs*(1-p.attrition_utilisateurs)+paid_u+organic_u+seo_u
+    next_s = prestataires*(1-p.attrition_prestataires)+paid_s+organic_s+seo_s
+    commission = p.prix_seance*p.commission*metrics['reservations']
+    primes = p.prime_garantie_prestataire*prestataires
+    complements = p.complement_garantie_prestataire*prestataires
+    revenu = commission+primes
     couts = (p.cout_variable_reservation*metrics['reservations'] + p.opex_fixes
-             + p.opex_par_prestataire*prestataires + p.cac_utilisateur*paid_u + p.cac_prestataire*paid_s)
+             + p.opex_par_prestataire*prestataires + p.cac_utilisateur*paid_u + p.cac_prestataire*paid_s
+             + p.cout_seo_mensuel + complements)
     return dict(metrics, utilisateurs=utilisateurs, prestataires=prestataires,
                 nouveaux_utilisateurs_payants=paid_u, nouveaux_utilisateurs_organiques=organic_u,
                 nouveaux_prestataires_payants=paid_s, nouveaux_prestataires_organiques=organic_s,
+                nouveaux_utilisateurs_seo=seo_u, nouveaux_prestataires_seo=seo_s,
+                revenu_commission=commission, revenu_garantie=primes, cout_garantie=complements,
                 croissance_organique_utilisateurs=(organic_u-p.attrition_utilisateurs*utilisateurs),
                 croissance_organique_prestataires=(organic_s-p.attrition_prestataires*prestataires),
                 revenu_plateforme=revenu, couts_opex=couts, solde_exploitation=revenu-couts,

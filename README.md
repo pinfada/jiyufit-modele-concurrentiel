@@ -12,6 +12,12 @@ précision prospective universelle.
 
 ## Modèle biface, liquidité et OPEX
 
+La [calculatrice autonome](outils/calculateur_garantie/calculateur-garantie.html)
+contient un onglet **Marché biface** : paramètres modifiables, trajectoires,
+OPEX et export du scénario. Ouvrir le fichier HTML dans le navigateur, sans
+serveur ni installation. Le moteur JavaScript est comparé au moteur Python
+par les tests. Voir [son guide](outils/calculateur_garantie/README.md).
+
 Le [rapport Mindbody/ClassPass](docs/MINDBODY_CLASSPASS_ET_MODELE_BIFACE.md)
 présente les données publiques collectées, les tests exécutés et le modèle
 local utilisateurs/prestataires. Celui-ci relie les réservations à la

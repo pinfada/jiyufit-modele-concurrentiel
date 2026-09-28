@@ -1,0 +1,1221 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JiyuFit — Garantie et marché biface</title>
+<meta name="description" content="Calculatrice autonome JiyuFit : revenu d'une activité, prix de la garantie de fréquentation et seuil de rentabilité.">
+<style>
+  :root {
+    --fond: #FAF7F2; --surface: #FFFFFF; --encre: #0A0A0A; --gris: #5B5B5B; --gris-clair: #8A8680;
+    --accent: #D8611F; --accent-pale: #F4C9AE; --ok: #1F7A3A; --alerte: #B42318; --trait: #0A0A0A;
+    --mono: "Space Mono", "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--encre); font: 16px/1.5 var(--sans); }
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-family: var(--mono); text-transform: uppercase; letter-spacing: -0.02em; font-size: clamp(1.5rem, 1rem + 2vw, 2.4rem); margin: 0 0 4px; }
+  h2 { font-family: var(--mono); text-transform: uppercase; font-size: 1rem; margin: 0 0 14px; letter-spacing: 0.02em; }
+  .soustitre { color: var(--gris); margin: 0 0 20px; max-width: 70ch; }
+  .onglets { display: flex; gap: 8px; margin: 0 0 20px; flex-wrap: wrap; }
+  .onglets button { font: 700 0.85rem var(--mono); text-transform: uppercase; background: var(--surface); border: 2px solid var(--trait); padding: 8px 14px; cursor: pointer; }
+  .onglets button[aria-pressed="true"] { background: var(--encre); color: var(--fond); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, label.bouton:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .grille { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .grille { grid-template-columns: 1fr; } }
+  .carte { background: var(--surface); border: 2px solid var(--trait); padding: 18px; box-shadow: 6px 6px 0 var(--trait); }
+  .carte + .carte { margin-top: 20px; }
+
+  /* Hiérarchie : le libellé se lit d'abord (mono gras, encre), l'aide ensuite (sans, gris, plus petit). */
+  .champ { margin: 0 0 16px; }
+  .champ > label, .groupe-titre { display: block; font: 700 0.84rem/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.02em; color: var(--encre); margin: 0 0 6px; }
+  .aide { display: block; font: 400 0.8rem/1.4 var(--sans); color: var(--gris-clair); margin: 6px 0 0; }
+  input, textarea { width: 100%; font: 1rem var(--mono); padding: 8px 10px; border: 2px solid var(--trait); background: var(--fond); color: var(--encre); }
+  input[aria-invalid="true"] { border-color: var(--alerte); background: #FDECEA; }
+  textarea { min-height: 120px; }
+  .ligne2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .modes { display: grid; grid-template-columns: 1fr 1fr; border: 2px solid var(--trait); margin: 0 0 16px; }
+  .modes label { font: 700 0.78rem var(--mono); text-transform: uppercase; text-align: center; padding: 9px 6px; cursor: pointer; background: var(--surface); }
+  .modes input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .modes input:checked + span { color: var(--fond); }
+  .modes label:has(input:checked) { background: var(--encre); color: var(--fond); }
+  .modes label:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+  .mois { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  @media (max-width: 420px) { .mois { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .mois label { display: block; font: 600 0.72rem var(--mono); text-transform: uppercase; color: var(--gris); margin: 0 0 3px; }
+  .mois input { padding: 6px 8px; font-size: 0.95rem; }
+  .ligne-boutons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .petit-bouton, .boutons button, .boutons label.bouton { font: 700 0.75rem var(--mono); text-transform: uppercase; border: 2px solid var(--trait); background: var(--surface); padding: 7px 10px; cursor: pointer; margin: 0; }
+  .petit-bouton:hover, .boutons button:hover { background: var(--encre); color: var(--fond); }
+
+  .chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .chiffre { border: 2px solid var(--trait); padding: 12px; background: var(--fond); }
+  .chiffre .libelle { font: 700 0.72rem var(--mono); text-transform: uppercase; color: var(--gris); }
+  .chiffre .valeur { font: 700 1.55rem var(--mono); margin-top: 4px; }
+  .chiffre .detail { font-size: 0.85rem; color: var(--gris); }
+  .chiffre.fort { background: var(--encre); color: var(--fond); }
+  .chiffre.fort .libelle, .chiffre.fort .detail { color: #D9D4CC; }
+  .verdict { margin-top: 14px; padding: 12px; border-left: 6px solid var(--accent); background: var(--fond); }
+  .verdict.ok { border-color: var(--ok); } .verdict.alerte { border-color: var(--alerte); }
+  .graphique { margin-top: 16px; }
+  .graphique svg { width: 100%; height: auto; display: block; }
+  .legende { display: flex; gap: 16px; flex-wrap: wrap; font: 0.78rem var(--sans); color: var(--gris); margin-top: 6px; }
+  .legende span::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--trait); }
+  .legende .l-mois::before { background: var(--encre); }
+  .legende .l-complement::before { background: var(--accent); }
+  .legende .l-plancher::before { border: 0; border-top: 3px dashed var(--accent); height: 0; vertical-align: 3px; }
+  details { margin-top: 14px; border-top: 2px solid var(--trait); padding-top: 10px; }
+  summary { font: 700 0.8rem var(--mono); text-transform: uppercase; cursor: pointer; }
+  details ul { margin: 10px 0 0; padding-left: 20px; font-size: 0.9rem; }
+  details li + li { margin-top: 6px; }
+  .conditions { font-size: 0.85rem; color: var(--gris); margin: 12px 0 0; }
+
+  table { width: 100%; border-collapse: collapse; font: 0.85rem var(--mono); }
+  th, td { border: 1px solid var(--trait); padding: 6px 8px; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { background: var(--encre); color: var(--fond); }
+  .defile { overflow-x: auto; }
+  .boutons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .erreur { color: var(--alerte); font-weight: 600; margin: 0; }
+  .erreur:empty { display: none; }
+  .note { font-size: 0.85rem; color: var(--gris); margin-top: 12px; }
+  .grec { text-transform: none; }
+  fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>JiyuFit · Simulateur autonome</h1>
+  <p class="soustitre">Calculatrice autonome : rien n'est envoyé nulle part, tout est calculé dans ce navigateur. Estimation indicative, pas une offre contractuelle.</p>
+
+  <div class="onglets" role="group" aria-label="Vue">
+    <button type="button" data-vue="communaute" aria-pressed="true">Vue communauté</button>
+    <button type="button" data-vue="jiyufit" aria-pressed="false" data-interne>Vue JiyuFit</button>
+    <button type="button" data-vue="biface" aria-pressed="false" data-interne>Marché biface</button>
+    <button type="button" data-vue="portefeuille" aria-pressed="false" data-interne>Portefeuille (CSV)</button>
+  </div>
+
+  <!-- ===================== VUE COMMUNAUTÉ / JIYUFIT ===================== -->
+  <section id="vue-communaute" class="grille" aria-labelledby="titre-saisie">
+    <form class="carte" id="formulaire" novalidate>
+      <h2 id="titre-saisie">Votre activité</h2>
+
+      <div class="champ">
+        <label for="placesParMois">Places proposées par mois</label>
+        <input id="placesParMois" type="number" min="1" step="1" value="173" inputmode="numeric">
+        <span class="aide">Exemple : 20 places, 2 séances par semaine ≈ 173 places.</span>
+      </div>
+      <div class="champ">
+        <label for="prix">Prix par place (€)</label>
+        <input id="prix" type="number" min="0" step="0.5" value="12" inputmode="decimal">
+      </div>
+
+      <fieldset>
+        <legend class="groupe-titre">Votre remplissage</legend>
+        <div class="modes">
+          <label><input type="radio" name="mode" value="estimation" checked><span>Estimation rapide</span></label>
+          <label><input type="radio" name="mode" value="historique"><span>Mois par mois</span></label>
+        </div>
+
+        <div id="bloc-estimation">
+          <div class="ligne2">
+            <div class="champ">
+              <label for="remplissage">Mois médian (%)</label>
+              <input id="remplissage" type="number" min="1" max="99" step="1" value="65" inputmode="decimal">
+            </div>
+            <div class="champ">
+              <label for="moisFaible">Mauvais mois (%)</label>
+              <input id="moisFaible" type="number" min="1" max="98" step="1" value="54" inputmode="decimal">
+            </div>
+          </div>
+          <span class="aide" style="margin-top:-8px">Le mois médian est dépassé un mois sur deux ; il diffère de la moyenne calculée. Le mauvais mois revient environ une fois sur dix et doit être inférieur à la médiane.</span>
+        </div>
+
+        <div id="bloc-historique" hidden>
+          <label for="ancrage-collage">Coller une série sur</label><select id="ancrage-collage"><option value="recent">Les derniers mois (fin au dernier mois écoulé)</option><option value="case">Les mois à partir de la case choisie</option></select><p class="aide" id="resume-collage" aria-live="polite"></p><div class="mois" id="grille-mois"></div>
+          <div class="ligne-boutons">
+            <button type="button" class="petit-bouton" id="ajouter-mois">+ 12 mois plus anciens</button>
+            <button type="button" class="petit-bouton" id="vider-mois">Vider</button>
+          </div>
+          <span class="aide">Remplissage de chaque mois, en %. Au moins 6 mois. Vous pouvez coller une colonne copiée depuis un tableur dans n'importe quelle case : elle se place sur les derniers mois, sauf choix explicite de la case de départ.</span>
+        </div>
+      </fieldset>
+
+      <fieldset id="parametres-internes" hidden>
+        <h2 style="margin-top:18px">Paramètres JiyuFit</h2>
+        <div class="ligne2"><div class="champ"><label for="prixMinimum">Prix minimum (€/mois)</label><input id="prixMinimum" type="number" min="0.01" step="any" value="10"></div><div class="champ"><label for="plafondRevenu">Plafond du revenu garanti (%)</label><input id="plafondRevenu" type="number" min="1" max="90" value="90"></div></div>
+        <p class="note">10 € minimum, plafond de 90 % et prix au plus égal à 25 % du plancher : règles prudentes de simulation, pas un tarif commercial validé. γ reste une hypothèse de chargement.</p>
+        <div class="ligne2">
+          <div class="champ"><label for="commission">Commission (%)</label><input id="commission" type="number" min="0" max="100" step="0.5" value="15"></div>
+          <div class="champ"><label for="quantile">Plancher au quantile (%)</label><input id="quantile" type="number" min="1" max="49" step="1" value="10"><span class="aide">10 = on garantit ce qui est vrai 9 mois sur 10.</span></div>
+        </div>
+        <div class="ligne2">
+          <div class="champ"><label for="gamma">Chargement <span class="grec">γ</span></label><input id="gamma" type="number" min="1" step="0.1" value="3.5"><span class="aide">Prix = γ × complément moyen.</span></div>
+          <div class="champ"><label for="frais">Frais garantie (€/mois)</label><input id="frais" type="number" min="0" step="1" value="0"></div>
+        </div>
+        <div class="ligne2">
+          <div class="champ"><label for="prixPropose">Prix proposé (€/mois)</label><input id="prixPropose" type="number" min="0" step="1" placeholder="auto"><span class="aide">Vide = prix calculé.</span></div>
+          <div class="champ"><label for="observation">Observation (mois)</label><input id="observation" type="number" min="0" max="24" step="1" value="3"><span class="aide">Avant activation de la garantie.</span></div>
+        </div>
+        <div class="champ"><label for="sansJiyufit">Remplissage sans JiyuFit (%)</label><input id="sansJiyufit" type="number" min="0" max="99" step="1" value="0"><span class="aide">Ce que l'activité ferait seule.</span></div>
+      </fieldset>
+      <p class="erreur" id="erreur" role="alert"></p>
+    </form>
+
+    <div>
+      <div class="carte" id="resultats-garantie" aria-live="polite">
+        <h2>Pour votre activité</h2>
+        <div class="chiffres" id="chiffres-communaute"></div>
+        <div class="graphique" id="graphique"></div>
+        <div class="verdict" id="verdict-communaute"></div>
+        <p class="note" id="stabilite" hidden></p>
+        <div class="verdict alerte" id="saisonnalite" hidden></div>
+        <details id="explication">
+          <summary>Comment est calculé ce prix</summary>
+          <ul id="explication-liste"></ul>
+        </details>
+        <p class="conditions" id="conditions"></p>
+      </div>
+      <div class="carte" id="carte-jiyufit" hidden aria-live="polite">
+        <h2>Pour JiyuFit</h2>
+        <div class="chiffres" id="chiffres-jiyufit"></div>
+        <div class="verdict" id="verdict-jiyufit"></div>
+        <p class="note">Modèle : remplissage mensuel logit-normal (ou historique réel), plancher au quantile choisi, complément moyen = manque moyen sous le plancher × revenu plein. Corrélation entre activités non modélisée ici : voir le notebook, sections XXX à XXXIII.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== VUE PORTEFEUILLE ===================== -->
+  <section id="vue-portefeuille" hidden aria-labelledby="titre-portefeuille">
+    <div class="carte">
+      <h2 id="titre-portefeuille">Portefeuille d'activités</h2>
+      <p class="note" style="margin-top:0">Colonnes : <code>nom;places_mois;prix;commission;remplissage;mois_faible;historique;prix_propose;dernier_mois</code> (en %, séparateur <code>;</code> ou <code>,</code>). L'historique est une liste séparée par des espaces ou des <code>|</code>, du plus ancien au plus récent ; <code>dernier_mois</code> (AAAA-MM) situe son dernier relevé, sinon c'est le dernier mois écoulé. Les paramètres γ, quantile et frais sont ceux de la vue JiyuFit.</p>
+      <div class="champ">
+        <label for="csv">Données (collez ou importez un fichier)</label>
+        <textarea id="csv" spellcheck="false"></textarea>
+      </div>
+      <div class="boutons">
+        <label class="bouton" for="fichier">Importer un CSV</label>
+        <input id="fichier" type="file" accept=".csv,text/csv" hidden>
+        <button type="button" id="calculer-portefeuille">Calculer</button>
+        <button type="button" id="exporter">Exporter les résultats</button>
+      </div>
+      <div class="champ" style="margin-top:14px">
+        <label for="choc">Stress : baisse de remplissage de tout le réseau (points)</label>
+        <input id="choc" type="number" min="0" max="50" step="1" value="10" style="max-width:160px">
+      </div>
+      <p class="erreur" id="erreur-portefeuille" role="alert"></p>
+    </div>
+    <div class="carte" aria-live="polite">
+      <div class="chiffres" id="chiffres-portefeuille"></div>
+      <div class="defile" style="margin-top:14px"><table id="table-portefeuille"></table></div>
+    </div>
+  </section>
+
+  <section id="vue-biface" hidden aria-labelledby="titre-biface">
+    <h2 id="titre-biface">Croissance locale · liquidité · OPEX</h2>
+    <p class="verdict">Scénario hypothétique, non calibré sur JiyuFit, Mindbody ou ClassPass. Une accélération n'est pas garantie. Paramètres mensuels pour un territoire, une activité et des créneaux cohérents.</p>
+    <div class="grille">
+      <form id="bf-form" class="carte" novalidate>
+        <h2>Votre scénario</h2>
+        <div class="champ"><label for="bf-scenario">Exemples à explorer</label>
+        <select id="bf-scenario" style="width:100%;padding:10px;font:inherit">
+          <option value="reference">Réseau et compatibilité</option><option value="sans_reseau">Sans effets de réseau</option>
+          <option value="faible_compatibilite">Offre peu compatible</option><option value="capacite">Capacité contrainte</option>
+        </select><span class="aide">Choisir un exemple réinitialise les paramètres. Modifiez ensuite les valeurs pour votre scénario. Tous les taux se saisissent en pourcentage : 20 correspond à 20 %. Prix, commission et places sont partagés avec la vue activité (prestataire représentatif).</span></div>
+        <div class="ligne2"><div class="champ"><label for="bf-utilisateurs">Utilisateurs au départ</label><input id="bf-utilisateurs" name="utilisateurs" type="number" min="0" step="any" value="100" required></div>
+<div class="champ"><label for="bf-prestataires">Prestataires au départ</label><input id="bf-prestataires" name="prestataires" type="number" min="0" step="any" value="5" required></div>
+<div class="champ"><label for="bf-mois">Durée (mois, 1–1200)</label><input id="bf-mois" name="mois" type="number" min="0" step="any" value="120" required></div>
+<div class="champ"><label for="bf-marche_utilisateurs">Utilisateurs adressables</label><input id="bf-marche_utilisateurs" name="marche_utilisateurs" type="number" min="0" step="any" value="20000" required></div>
+<div class="champ"><label for="bf-marche_prestataires">Prestataires adressables</label><input id="bf-marche_prestataires" name="marche_prestataires" type="number" min="0" step="any" value="200" required></div>
+<div class="champ"><label for="bf-demandes_par_utilisateur">Demandes / utilisateur / mois</label><input id="bf-demandes_par_utilisateur" name="demandes_par_utilisateur" type="number" min="0" step="any" value="4" required></div>
+<div class="champ"><label for="bf-places_par_prestataire">Places / prestataire / mois</label><input id="bf-places_par_prestataire" name="places_par_prestataire" type="number" min="0" step="any" value="100" required></div>
+<div class="champ"><label for="bf-compatibilite">Compatibilité locale q (coefficient)</label><input id="bf-compatibilite" name="compatibilite" type="number" min="0" step="any" value="0.015" required></div>
+<div class="champ"><label for="bf-recrutement_utilisateurs">Acquisition payante utilisateurs / mois, avant saturation</label><input id="bf-recrutement_utilisateurs" name="recrutement_utilisateurs" type="number" min="0" step="any" value="20" required></div>
+<div class="champ"><label for="bf-recrutement_prestataires">Acquisition payante prestataires / mois, avant saturation</label><input id="bf-recrutement_prestataires" name="recrutement_prestataires" type="number" min="0" step="any" value="1" required></div>
+<div class="champ"><label for="bf-effet_utilisateurs">Effet réseau utilisateurs (%)</label><input id="bf-effet_utilisateurs" name="effet_utilisateurs" type="number" min="0" step="any" value="0.24" required></div>
+<div class="champ"><label for="bf-effet_prestataires">Effet réseau prestataires (%)</label><input id="bf-effet_prestataires" name="effet_prestataires" type="number" min="0" step="any" value="0.18" required></div>
+<div class="champ"><label for="bf-attrition_utilisateurs">Attrition utilisateurs / mois (%)</label><input id="bf-attrition_utilisateurs" name="attrition_utilisateurs" type="number" min="0" step="any" value="0.08" required></div>
+<div class="champ"><label for="bf-attrition_prestataires">Attrition prestataires / mois (%)</label><input id="bf-attrition_prestataires" name="attrition_prestataires" type="number" min="0" step="any" value="0.035" required></div>
+<div class="champ"><label for="bf-prix_seance">Prix séance (€)</label><input id="bf-prix_seance" name="prix_seance" type="number" min="0" step="any" value="20" required></div>
+<div class="champ"><label for="bf-commission">Commission (%)</label><input id="bf-commission" name="commission" type="number" min="0" step="any" value="0.2" required></div>
+<div class="champ"><label for="bf-cout_variable_reservation">Coût variable / réservation (€)</label><input id="bf-cout_variable_reservation" name="cout_variable_reservation" type="number" min="0" step="any" value="0.6" required></div>
+<div class="champ"><label for="bf-opex_fixes">OPEX fixes / mois (€)</label><input id="bf-opex_fixes" name="opex_fixes" type="number" min="0" step="any" value="8000" required></div>
+<div class="champ"><label for="bf-opex_par_prestataire">OPEX / prestataire / mois (€)</label><input id="bf-opex_par_prestataire" name="opex_par_prestataire" type="number" min="0" step="any" value="5" required></div>
+<div class="champ"><label for="bf-cac_utilisateur">Coût acquisition / utilisateur payé (€)</label><input id="bf-cac_utilisateur" name="cac_utilisateur" type="number" min="0" step="any" value="10" required></div>
+<div class="champ"><label for="bf-cac_prestataire">Coût acquisition / prestataire payé (€)</label><input id="bf-cac_prestataire" name="cac_prestataire" type="number" min="0" step="any" value="100" required></div>
+</div>
+        <div class="champ"><label for="bf-acquisition_seo_utilisateurs">Acquisition SEO utilisateurs / mois, avant saturation</label><input id="bf-acquisition_seo_utilisateurs" name="acquisition_seo_utilisateurs" type="number" min="0" step="any" value="0" required></div><div class="champ"><label for="bf-acquisition_seo_prestataires">Acquisition SEO prestataires / mois, avant saturation</label><input id="bf-acquisition_seo_prestataires" name="acquisition_seo_prestataires" type="number" min="0" step="any" value="0" required></div><div class="champ"><label for="bf-cout_seo_mensuel">Budget SEO / mois (€)</label><span class="aide">Budget et acquisition SEO sont deux hypothèses indépendantes. Augmenter ce budget ne crée pas automatiquement des utilisateurs ou des prestataires ; renseignez les volumes selon vos mesures ou votre scénario.</span><input id="bf-cout_seo_mensuel" name="cout_seo_mensuel" type="number" min="0" step="any" value="0" required></div><div class="champ"><label for="bf-prime_garantie_prestataire">Prime garantie / prestataire / mois (€)</label><input id="bf-prime_garantie_prestataire" name="prime_garantie_prestataire" type="number" min="0" step="any" value="0" required></div><div class="champ"><label for="bf-complement_garantie_prestataire">Coût garantie + frais / prestataire / mois (€)</label><input id="bf-complement_garantie_prestataire" name="complement_garantie_prestataire" type="number" min="0" step="any" value="0" required></div><div class="boutons"><button type="button" id="bf-garantie">Intégrer la garantie calculée</button></div><p class="note" id="bf-lien-garantie">Garantie non intégrée. Importer le devis valide suppose une activité identique et couverte pour chaque prestataire ; les frais de garantie sont inclus une seule fois.</p><p class="note" id="bf-unites" aria-live="polite"></p><p class="erreur" id="bf-erreur" role="alert"></p>
+        <div class="boutons"><button type="submit">Recalculer</button><button type="button" id="bf-export">Exporter le scénario (JSON)</button></div>
+      </form>
+      <div id="bf-resultats" class="carte" aria-live="polite">
+        <h2>Résultats simulés</h2><p class="note">Effectifs affichés arrondis ; calculs et export conservent les valeurs continues du modèle.</p><div class="chiffres" id="bf-chiffres"></div>
+        <p class="verdict" id="bf-bascule"></p>
+        <div class="graphique" id="bf-graphique"></div>
+        <details><summary>Trajectoire mensuelle</summary><div class="defile"><table id="bf-table"></table></div></details>
+        <details><summary>Hypothèses et données publiques</summary>
+          <p>L = 1 − exp(−q × prestataires). Réservations = minimum entre demandes × L et capacité. L représente la compatibilité avant rationnement ; le taux de service inclut la capacité. Ce n'est pas une disponibilité mesurée en temps réel.</p>
+          <p>Le service et le remplissage influencent les entrées organiques. Attrition et saturation limitent les deux faces. Le revenu est la commission sur les réservations ; les OPEX incluent coûts fixes, variables et acquisition payante.</p>
+          <p>Le besoin de financement est le creux des soldes cumulés. Les fonds sont supposés disponibles ; TVA, BFR et investissements initiaux ne sont pas inclus. La garantie est incluse uniquement si ses primes et coûts sont renseignés ou importés ; le budget SEO est explicite. Le scénario de croissance ne constitue pas un historique pour tarifer une garantie.</p>
+          <p>14 trimestres Mindbody (2015–2018) et 8 observations ClassPass ont été étudiés. Leurs agrégats ne permettent pas de calibrer une liquidité locale ou de dater une bascule. Les consommateurs Mindbody sur 24 mois ne sont pas des utilisateurs actifs mensuels.</p>
+          <p><a href="https://www.mindbodyonline.com/company/press/mindbody-reports-third-quarter-2018-financial-results" target="_blank" rel="noopener">Publication Mindbody</a> · <a href="https://classpass.com/partners/2026-industry-impact-report" target="_blank" rel="noopener">Publication ClassPass</a></p>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== MOTEUR (pur, testé : tests/moteur.test.js) ===================== -->
+<script id="moteur">
+(function (racine) {
+  'use strict';
+
+  var Z_MIN = -8, Z_MAX = 8, PAS = 4000;       // intégration de Simpson sur N(0,1)
+  var PAS_MANQUE = 240;                         // Simpson sous le plancher (intégrande lisse)
+  var HISTORIQUE_MIN = 6;                       // mois minimum pour utiliser l'historique
+  // Le plancher ne se calcule jamais sur le quantile brut des mois : sur 12 mois il
+  // tombe entre les deux pires mois (un seul mois divisait le prix par deux), et
+  // basculer de méthode à 24 mois créait un saut (studio lyonnais : 73 € → 35 €
+  // pour un mois de plus). Méthode unique : loi logit-normale ajustée sur la moitié
+  // basse des mois (médiane et quartile bas), la partie qui compte pour un plancher.
+  // Les mois complets (plafond de capacité) n'y pèsent pas.
+  var HISTORIQUE_EMPIRIQUE_MIN = 24;            // dès 24 mois : test hors échantillon et creux saisonniers
+  var BORNE_AJUSTEMENT = 0.03;                  // 0 % et 100 % bornés à 3 % / 97 % avant le logit
+  var Z_QUARTILE = 0.6744897501960817;          // −Φ⁻¹(0,25)
+  var MOIS_TEST = 12;                           // année réservée au test hors échantillon
+  var SEUIL_CREUX = 0.85;                       // mois < 85 % de la moyenne à chaque occurrence = creux récurrent
+
+  function borner(p) { return Math.min(1 - 1e-9, Math.max(1e-9, p)); }
+  function logit(p) { p = borner(p); return Math.log(p / (1 - p)); }
+  function invLogit(x) { return 1 / (1 + Math.exp(-x)); }
+
+  // Inverse de la loi normale centrée réduite (Acklam, erreur relative < 1,2e-9).
+  function normInv(p) {
+    if (!(p > 0 && p < 1)) throw new RangeError('normInv : p doit être dans ]0,1[');
+    var a = [-3.969683028665376e1, 2.209460984245205e2, -2.759285104469687e2, 1.383577518672690e2, -3.066479806614716e1, 2.506628277459239];
+    var b = [-5.447609879822406e1, 1.615858368580409e2, -1.556989798598866e2, 6.680131188771972e1, -1.328068155288572e1];
+    var c = [-7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+    var d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996, 3.754408661907416];
+    var q, r;
+    if (p < 0.02425) { q = Math.sqrt(-2 * Math.log(p)); return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+    if (p > 1 - 0.02425) { q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+    q = p - 0.5; r = q * q;
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+  }
+
+  // Fonction de répartition de N(0,1) (Abramowitz-Stegun 7.1.26 via erf, erreur < 1,5e-7).
+  function normCdf(z) {
+    var t = 1 / (1 + 0.3275911 * Math.abs(z) / Math.SQRT2);
+    var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z / 2);
+    return z >= 0 ? (1 + y) / 2 : (1 - y) / 2;
+  }
+
+  // Quantile empirique, interpolation linéaire (même convention que numpy.quantile).
+  function quantileEmpirique(valeurs, q) {
+    var t = valeurs.slice().sort(function (x, y) { return x - y; });
+    var pos = (t.length - 1) * q, bas = Math.floor(pos), haut = Math.ceil(pos);
+    return t[bas] + (t[haut] - t[bas]) * (pos - bas);
+  }
+
+  // Remplissage mensuel logit-normal : médiane `mediane`, dispersion `s` sur l'échelle logit.
+  function distributionLogitNormale(mediane, s) {
+    if (!(mediane > 0 && mediane < 1)) throw new RangeError('Le remplissage doit être entre 0 et 100 %');
+    if (!(s >= 0)) throw new RangeError('La dispersion doit être positive');
+    var mu = logit(mediane);
+    return {
+      type: 'logit-normale', mediane: mediane, dispersion: s,
+      quantile: function (q) { return s === 0 ? mediane : invLogit(mu + normInv(q) * s); },
+      esperance: function (f) {
+        if (s === 0) return f(mediane);
+        var h = (Z_MAX - Z_MIN) / PAS, somme = 0;
+        for (var i = 0; i <= PAS; i++) {
+          var z = Z_MIN + i * h;
+          var poids = (i === 0 || i === PAS) ? 1 : (i % 2 ? 4 : 2);
+          somme += poids * f(invLogit(mu + s * z)) * Math.exp(-z * z / 2);
+        }
+        return somme * h / 3 / Math.sqrt(2 * Math.PI);
+      },
+      // Tout le réseau perd `points` de remplissage : la médiane recule, la forme est conservée.
+      // Complément moyen E[max(0, plancher − f)] : l'intégrande n'est non nul que sous
+      // le plancher, où il est lisse ; Simpson sur [Z_MIN, z*] converge avec peu de points.
+      manqueMoyen: function (plancher) {
+        if (s === 0) return Math.max(0, plancher - mediane);
+        var zEtoile = Math.min(Z_MAX, (logit(plancher) - mu) / s);
+        if (zEtoile <= Z_MIN) return 0;
+        var n = PAS_MANQUE, h = (zEtoile - Z_MIN) / n, somme = 0;
+        for (var i = 0; i <= n; i++) {
+          var z = Z_MIN + i * h;
+          var poids = (i === 0 || i === n) ? 1 : (i % 2 ? 4 : 2);
+          somme += poids * (plancher - invLogit(mu + s * z)) * Math.exp(-z * z / 2);
+        }
+        return somme * h / 3 / Math.sqrt(2 * Math.PI);
+      },
+      probaSous: function (plancher) { return s === 0 ? (mediane < plancher ? 1 : 0) : normCdf((logit(plancher) - mu) / s); },
+      decalee: function (points) { return distributionLogitNormale(borner(mediane - points), s); }
+    };
+  }
+
+  // Historique réel : chaque mois observé pèse autant (distribution empirique).
+  function distributionHistorique(valeurs) {
+    var v = valeurs.map(function (x) { return Math.min(1, Math.max(0, x)); });
+    return {
+      type: 'historique', valeurs: v,
+      quantile: function (q) { return quantileEmpirique(v, q); },
+      esperance: function (f) { return v.reduce(function (acc, x) { return acc + f(x); }, 0) / v.length; },
+      manqueMoyen: function (plancher) { return v.reduce(function (a, x) { return a + Math.max(0, plancher - x); }, 0) / v.length; },
+      probaSous: function (plancher) { return v.filter(function (x) { return x < plancher; }).length / v.length; },
+      decalee: function (points) { return distributionHistorique(v.map(function (x) { return x - points; })); }
+    };
+  }
+
+  // Dispersion logit déduite d'un « mauvais mois » supposé au quantile q.
+  function dispersionDepuisMoisFaible(mediane, moisFaible, q) {
+    q = q || 0.10;
+    if (!(moisFaible > 0 && moisFaible < mediane)) throw new RangeError('Le mauvais mois doit être inférieur au remplissage médian');
+    return (logit(mediane) - logit(moisFaible)) / -normInv(q);
+  }
+
+  // Ajustement robuste sur l'historique : médiane observée, dispersion tirée de
+  // l'écart médiane → quartile bas sur l'échelle logit. Repli sur l'écart-type
+  // des logits si la moitié basse est plate (mois tous identiques).
+  function ajusterSurHistorique(valeurs) {
+    var b = function (x) { return Math.min(1 - BORNE_AJUSTEMENT, Math.max(BORNE_AJUSTEMENT, x)); };
+    var mediane = b(quantileEmpirique(valeurs, 0.5));
+    var s = (logit(mediane) - logit(b(quantileEmpirique(valeurs, 0.25)))) / Z_QUARTILE;
+    if (!(s > 0)) {
+      var logits = valeurs.map(function (x) { return logit(b(x)); });
+      var mu = logits.reduce(function (a, c) { return a + c; }, 0) / logits.length;
+      s = Math.sqrt(logits.reduce(function (a, c) { return a + (c - mu) * (c - mu); }, 0) / (logits.length - 1));
+    }
+    var d = distributionLogitNormale(mediane, s);
+    d.type = 'historique-ajuste';
+    return d;
+  }
+
+  function creerDistribution(e) {
+    if (e.historique && e.historique.length >= HISTORIQUE_MIN) return ajusterSurHistorique(e.historique);
+    if (e.historique && e.historique.length > 0) throw new RangeError('Historique trop court : au moins ' + HISTORIQUE_MIN + ' mois');
+    // « Mauvais mois » = mois qui revient environ 1 fois sur 10 (P10), quel que
+    // soit le quantile choisi pour le plancher.
+    var s = e.dispersion != null ? e.dispersion : dispersionDepuisMoisFaible(e.remplissage, e.moisFaible, 0.10);
+    return distributionLogitNormale(e.remplissage, s);
+  }
+
+  function primePureSur(dist, plancher, payoutPlein) {
+    return dist.manqueMoyen(plancher) * payoutPlein;
+  }
+
+  // Remplissage moyen sous lequel la garantie vendue à `prime` devient perdante
+  // (plancher figé, tout le remplissage recule). Dichotomie sur le recul.
+  function seuilDeRentabilite(dist, plancher, payoutPlein, prime, frais) {
+    var budget = prime - frais;
+    if (budget <= primePureSur(dist, plancher, payoutPlein)) return { deficitaire: true, remplissageMoyen: null, recul: 0 };
+    var bas = 0, haut = 0.99;
+    for (var i = 0; i < 40; i++) {                // précision 0,99 / 2^40 ≈ 1e-12
+      var milieu = (bas + haut) / 2;
+      if (primePureSur(dist.decalee(milieu), plancher, payoutPlein) < budget) bas = milieu; else haut = milieu;
+    }
+    var d = dist.decalee(bas);
+    return { deficitaire: false, recul: bas, remplissageMoyen: d.esperance(function (f) { return f; }) };
+  }
+
+  function exiger(condition, message) { if (!condition) throw new RangeError(message); }
+
+  function evaluerSalle(e) {
+    exiger(Number.isFinite(e.placesParMois) && e.placesParMois > 0, 'Le nombre de places doit être positif');
+    exiger(Number.isFinite(e.prix) && e.prix > 0, 'Le prix par place doit être strictement positif');
+    var commission = e.commission != null ? e.commission : 0.15;
+    var q = e.quantilePlancher != null ? e.quantilePlancher : 0.10;
+    var gamma = e.gamma != null ? e.gamma : 3.5;
+    var frais = e.frais ?? 0;
+    var prixMinimum = e.prixMinimum ?? 10;
+    var plafondRevenu = e.plafondRevenu ?? .90;
+    exiger(Number.isFinite(gamma) && gamma >= 1, 'Chargement gamma : au moins 1');
+    exiger(Number.isFinite(frais) && frais >= 0, 'Frais positifs ou nuls');
+    exiger(Number.isFinite(prixMinimum) && prixMinimum > 0, 'Prix minimum strictement positif');
+    exiger(Number.isFinite(plafondRevenu) && plafondRevenu > 0 && plafondRevenu <= .9, 'Plafond du revenu entre 0 et 90 %');
+    if (e.historique) exiger(e.historique.every(v=>Number.isFinite(v) && v>=0 && v<=1), 'Historique entre 0 et 100 %');
+    if (e.prixPropose != null && e.prixPropose !== '') exiger(Number.isFinite(Number(e.prixPropose)) && Number(e.prixPropose)>=0, 'Prix proposé positif ou nul');
+    var sansJiyufit = e.remplissageSansJiyufit || 0;
+    exiger(commission >= 0 && commission <= 1, 'Commission entre 0 et 100 %');
+    exiger(q > 0 && q < 0.5, 'Quantile du plancher entre 1 et 49 %');
+
+    var historique = e.historique && e.historique.length ? e.historique : null;
+    var dist = creerDistribution({ historique: historique, remplissage: e.remplissage, moisFaible: e.moisFaible, dispersion: e.dispersion, quantilePlancher: q });
+    var payoutPlein = e.placesParMois * e.prix * (1 - commission);
+    // Avec un historique, le revenu moyen affiché est celui réellement observé ;
+    // le modèle ne sert qu'au plancher, au complément et au seuil.
+    var remplissageMoyen = historique
+      ? historique.reduce(function (a, b) { return a + b; }, 0) / historique.length
+      : dist.esperance(function (f) { return f; });
+    var plancher = e.plancherTaux != null ? e.plancherTaux : dist.quantile(q);
+    // Un plancher explicite sert au stress d'un contrat déjà figé ; le nouveau contrat est plafonné.
+    if (e.plancherTaux == null) plancher = Math.min(plancher, plafondRevenu * remplissageMoyen);
+    var empirique = historique ? distributionHistorique(historique) : null;
+    var pureModele = primePureSur(dist, plancher, payoutPlein);
+    var pureObservee = empirique ? primePureSur(empirique, plancher, payoutPlein) : null;
+    var primePure = Math.max(pureModele, pureObservee || 0);
+    var moisSous = historique ? historique.filter(v=>v<plancher).length : null;
+    var revue = !!(historique && historique.length>=12 && moisSous/historique.length>=.25);
+    // Stress et seuil utilisent aussi l'enveloppe modèle / historique.
+    function enveloppe(a,b) {
+      return {manqueMoyen:x=>Math.max(a.manqueMoyen(x),b.manqueMoyen(x)),
+        esperance:f=>b.esperance(f), decalee:x=>enveloppe(a.decalee(x),b.decalee(x))};
+    }
+    var risque = empirique ? enveloppe(dist,empirique) : dist;
+    // Prix recommandé : γ × prime pure, jamais sous la prime minimale (pure + frais).
+    var primeCommerciale = Math.max(prixMinimum, gamma * primePure, primePure + frais);
+    var prime = e.prixPropose != null && e.prixPropose !== '' ? Number(e.prixPropose) : primeCommerciale;
+    var testPrudent = !e._sansSensibilite ? testerSurDerniereAnnee(e) : null;
+    if(testPrudent && testPrudent.lossRatio>1) revue=true;
+    // Règle de valeur minimale, distincte du risque actuariel : hypothèse de simulation.
+    var partPrixMax = e.partPrixMax ?? .25;
+    exiger(Number.isFinite(partPrixMax) && partPrixMax>0 && partPrixMax<=1, 'Rapport prix/plancher maximal entre 0 et 100 %');
+    var couvertureInsuffisante = plancher*payoutPlein <= 0 || prime > partPrixMax*plancher*payoutPlein;
+    var commissionJiyufit = remplissageMoyen * e.placesParMois * e.prix * commission;
+
+    return {
+      distribution: dist.type,
+      payoutPlein: payoutPlein,
+      remplissageMoyen: remplissageMoyen,
+      revenuNetMoyen: remplissageMoyen * payoutPlein,
+      revenuApporte: Math.max(0, remplissageMoyen - sansJiyufit) * payoutPlein,
+      plancherTaux: plancher,
+      plancherEuros: plancher * payoutPlein,
+      probaSousPlancher: empirique ? empirique.probaSous(plancher) : dist.probaSous(plancher),
+      probaModeleSousPlancher: dist.probaSous(plancher),
+      primePureModele: pureModele, primePureObservee: pureObservee,
+      revueRequise: revue,
+      tarifValide: !revue && prime >= primeCommerciale && !couvertureInsuffisante,
+      couvertureInsuffisante: couvertureInsuffisante, partPrixMax: partPrixMax,
+      stress10: primePureSur(risque.decalee(.10),plancher,payoutPlein),
+      stress30: primePureSur(risque.decalee(.30),plancher,payoutPlein),
+      primePure: primePure,
+      primeCommerciale: primeCommerciale,
+      prime: prime,
+      primeMinimale: Math.max(prixMinimum, primePure + frais),
+      lossRatio: prime > 0 ? primePure / prime : null,
+      commissionJiyufit: commissionJiyufit,
+      margeGarantie: prime - primePure - frais,
+      margeJiyufit: commissionJiyufit + prime - primePure - frais,
+      seuil: seuilDeRentabilite(risque, plancher, payoutPlein, prime, frais),
+      nombreMois: historique ? historique.length : null,
+      // Part des mois observés au niveau du plancher ou au-dessus (« X mois sur Y »).
+      moisAuDessus: historique ? historique.filter(function (f) { return f >= plancher; }).length : null,
+      plancherPartRevenu: remplissageMoyen > 0 ? plancher / remplissageMoyen : null,
+      // Contrôle interne : quantile brut des mois observés (non utilisé pour tarifer).
+      plancherBrutTaux: historique ? quantileEmpirique(historique, q) : null,
+      sensibilite: e._sansSensibilite ? null : sensibilitePireMois(e, historique),
+      _dist: dist, _risque: risque
+    };
+  }
+
+  // Stabilité : même calcul sans le pire mois observé. Un écart fort signale un
+  // plancher qui dépend d'un seul mois.
+  function sensibilitePireMois(e, historique) {
+    if (!historique || historique.length <= HISTORIQUE_MIN) return null;
+    var pire = Math.min.apply(null, historique);
+    var reste = historique.slice();
+    reste.splice(reste.indexOf(pire), 1);
+    var r = evaluerSalle(Object.assign({}, e, { historique: reste, prixPropose: null, _sansSensibilite: true }));
+    return { pireMois: pire, plancherEuros: r.plancherEuros, prime: r.prime };
+  }
+
+  // Test hors échantillon : plancher et prix calculés sans la dernière année,
+  // puis appliqués à cette année-là. Possible dès 24 mois.
+  function testerSurDerniereAnnee(e) {
+    var h = e.historique || [];
+    if (h.length < HISTORIQUE_EMPIRIQUE_MIN) return null;
+    var calibrage = h.slice(0, h.length - MOIS_TEST), test = h.slice(h.length - MOIS_TEST);
+    var r = evaluerSalle(Object.assign({}, e, { historique: calibrage, _sansSensibilite: true }));
+    var complement = test.reduce(function (acc, f) { return acc + Math.max(0, r.plancherTaux - f); }, 0) * r.payoutPlein;
+    var primes = r.prime * test.length;
+    return {
+      moisCalibrage: calibrage.length, moisTest: test.length,
+      plancherEuros: r.plancherEuros, prime: r.prime,
+      moisSousPlancher: test.filter(function (f) { return f < r.plancherTaux; }).length,
+      complementTotal: complement, primesEncaissees: primes,
+      lossRatio: primes > 0 ? complement / primes : null
+    };
+  }
+
+  // Creux récurrents : mois de l'année (0 = janvier) observés au moins deux fois
+  // et, à chaque fois, sous 85 % du remplissage moyen. La garantie les paiera
+  // probablement chaque année : c'est prévisible, donc un signal d'anti-sélection.
+  function creuxSaisonniers(points) {
+    if (!points || points.length < HISTORIQUE_EMPIRIQUE_MIN) return [];
+    var moyenne = points.reduce(function (a, p) { return a + p.valeur; }, 0) / points.length;
+    var parMois = {};
+    points.forEach(function (p) { (parMois[p.moisAnnee] = parMois[p.moisAnnee] || []).push(p.valeur); });
+    return Object.keys(parMois).map(Number).filter(function (m) {
+      var v = parMois[m];
+      return v.length >= 2 && v.every(function (x) { return x < SEUIL_CREUX * moyenne; });
+    }).map(function (m) {
+      var v = parMois[m];
+      var moyenneMois = v.reduce(function (a, b) { return a + b; }, 0) / v.length;
+      return { moisAnnee: m, occurrences: v.length, ecart: moyenneMois / moyenne - 1 };
+    }).sort(function (a, b) { return a.ecart - b.ecart; });
+  }
+
+  // Portefeuille : sommes, loss ratio, et stress « tout le réseau recule de `choc` points »
+  // (choc corrélé : c'est le seul vrai risque, cf. doctrine §6 geste 4).
+  // options.moisFin : mois calendaire (0 = janvier) du dernier mois des historiques
+  // CSV, pour situer les creux saisonniers. Par convention, le dernier mois écoulé.
+  function evaluerPortefeuille(salles, options) {
+    var choc = (options && options.choc) || 0;
+    var moisFin = options && options.moisFin != null ? options.moisFin : null;
+    var lignes = salles.map(function (s) {
+      var r = evaluerSalle(s);
+      var sousChoc = primePureSur(r._risque.decalee(choc), r.plancherTaux, r.payoutPlein);
+      var h = s.historique || [];
+      // Le mois du dernier relevé propre à l'activité (colonne dernier_mois) prime sur la convention.
+      var fin = s.moisFin != null ? s.moisFin : moisFin;
+      var points = fin == null ? [] : h.map(function (valeur, i) {
+        return { moisAnnee: ((fin - (h.length - 1 - i)) % 12 + 12) % 12, valeur: valeur };
+      });
+      return { nom: s.nom, resultat: r, sinistreSousChoc: sousChoc, test: testerSurDerniereAnnee(s), creux: creuxSaisonniers(points) };
+    });
+    var somme = function (f) { return lignes.reduce(function (acc, l) { return acc + f(l); }, 0); };
+    var primes = somme(function (l) { return l.resultat.prime; });
+    var pures = somme(function (l) { return l.resultat.primePure; });
+    var stress = somme(function (l) { return l.sinistreSousChoc; });
+    return {
+      lignes: lignes,
+      primes: primes, sinistresAttendus: pures,
+      commissions: somme(function (l) { return l.resultat.commissionJiyufit; }),
+      frais: somme(function (l) { return l.resultat.prime - l.resultat.primePure - l.resultat.margeGarantie; }),
+      marge: somme(function (l) { return l.resultat.margeJiyufit; }),
+      lossRatio: primes > 0 ? pures / primes : null,
+      sinistresSousChoc: stress,
+      lossRatioSousChoc: primes > 0 ? stress / primes : null,
+      horsEchantillon: agregerTests(lignes)
+    };
+  }
+
+  // Loss ratio hors échantillon du portefeuille : compléments de la dernière année
+  // (plancher calculé sans elle) / primes de cette année, sur les activités à 24 mois ou plus.
+  function agregerTests(lignes) {
+    var testees = lignes.filter(function (l) { return l.test; });
+    if (!testees.length) return null;
+    var complements = testees.reduce(function (a, l) { return a + l.test.complementTotal; }, 0);
+    var primes = testees.reduce(function (a, l) { return a + l.test.primesEncaissees; }, 0);
+    return { activites: testees.length, complements: complements, primes: primes, lossRatio: primes > 0 ? complements / primes : null };
+  }
+
+  function nombre(texte, decimaleVirgule) {
+    var t = String(texte == null ? '' : texte).trim();
+    if (t === '') return null;
+    if (decimaleVirgule) t = t.replace(',', '.');
+    var n = Number(t);
+    if (!isFinite(n)) throw new RangeError('Nombre invalide : « ' + texte + ' »');
+    return n;
+  }
+
+  // CSV → salles. Pourcentages en entrée (65 = 65 %). Séparateur ; (décimale ,) ou ,.
+  function lireCsv(texte) {
+    var lignes = String(texte).split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+    if (lignes.length < 2) throw new RangeError('CSV vide : une ligne d\'en-tête et au moins une salle');
+    var sep = lignes[0].indexOf(';') >= 0 ? ';' : ',';
+    var virgule = sep === ';';
+    var entetes = lignes[0].split(sep).map(function (h) { return h.trim().toLowerCase(); });
+    var col = function (nom) { return entetes.indexOf(nom); };
+    ['nom', 'places_mois', 'prix'].forEach(function (c) { exiger(col(c) >= 0, 'Colonne manquante : ' + c); });
+    return lignes.slice(1).map(function (ligne, i) {
+      var v = ligne.split(sep);
+      var champ = function (nom) { var k = col(nom); return k >= 0 ? v[k] : null; };
+      var pct = function (nom) { var n = nombre(champ(nom), virgule); return n == null ? null : n / 100; };
+      var hist = (champ('historique') || '').trim();
+      var historique = hist ? hist.split(/[\s|]+/).map(function (x) { return nombre(x, virgule) / 100; }) : null;
+      var salle = {
+        nom: (champ('nom') || ('Salle ' + (i + 1))).trim(),
+        placesParMois: nombre(champ('places_mois'), virgule),
+        prix: nombre(champ('prix'), virgule),
+        commission: pct('commission'),
+        remplissage: pct('remplissage'),
+        moisFaible: pct('mois_faible'),
+        historique: historique,
+        prixPropose: nombre(champ('prix_propose'), virgule)
+      };
+      var dernier = (champ('dernier_mois') || '').trim();
+      if (dernier) {
+        var m = /^(\d{4})-(\d{2})$/.exec(dernier);
+        exiger(m && Number(m[2]) >= 1 && Number(m[2]) <= 12, 'dernier_mois attendu au format AAAA-MM : « ' + dernier + ' »');
+        salle.moisFin = Number(m[2]) - 1;
+      }
+      if (salle.commission == null) delete salle.commission;
+      return salle;
+    });
+  }
+
+  // Série collée depuis un tableur, un mail ou saisie à la main : « 88,3 », « 88.3 »,
+  // « 88 % », séparateurs espaces / tabulations / ; / retours à la ligne / « | ».
+  // Une virgule entre deux nombres sans espace (« 88,3,70 ») est ambiguë : refusée.
+  function lireSerie(texte) {
+    // « 65 % » : le signe est retiré avant le découpage (\s couvre aussi les espaces insécables).
+    var jetons = String(texte == null ? '' : texte).replace(/\s*%/g, '').split(/[\s;|]+/).filter(function (j) { return j !== ''; });
+    return jetons.map(function (jeton) {
+      var t = jeton;
+      exiger(/^\d+([.,]\d+)?$/.test(t), 'Valeur illisible : « ' + jeton + ' » (attendu un pourcentage, ex. 72 ou 72,5)');
+      var n = Number(t.replace(',', '.'));
+      exiger(n >= 0 && n <= 100, 'Valeur hors de 0-100 % : « ' + jeton + ' »');
+      return n / 100;
+    });
+  }
+
+  // « Mois types » pour le graphique en mode estimation : n quantiles centrés
+  // ((i + ½)/n), du plus faible au plus fort. Avec n = 10 et un plancher P10,
+  // exactement un mois type tombe sous le plancher : « 1 mois sur 10 ».
+  function moisTypes(dist, n) {
+    n = n || 10;
+    var sortie = [];
+    for (var i = 0; i < n; i++) sortie.push(dist.quantile((i + 0.5) / n));
+    return sortie;
+  }
+
+  var api = {
+    lireSerie: lireSerie, moisTypes: moisTypes,
+    testerSurDerniereAnnee: testerSurDerniereAnnee, creuxSaisonniers: creuxSaisonniers,
+    HISTORIQUE_EMPIRIQUE_MIN: HISTORIQUE_EMPIRIQUE_MIN,
+    logit: logit, invLogit: invLogit, normInv: normInv, quantileEmpirique: quantileEmpirique,
+    distributionLogitNormale: distributionLogitNormale, distributionHistorique: distributionHistorique,
+    dispersionDepuisMoisFaible: dispersionDepuisMoisFaible, creerDistribution: creerDistribution,
+    evaluerSalle: evaluerSalle, evaluerPortefeuille: evaluerPortefeuille, lireCsv: lireCsv
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  racine.CalculateurGarantie = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+
+<!-- ===================== INTERFACE ===================== -->
+<script>
+(function () {
+  'use strict';
+  var M = window.CalculateurGarantie;
+  var $ = function (id) { return document.getElementById(id); };
+  var params = new URLSearchParams(location.search);
+  // ?public=1 : version à diffuser aux communautés (vues internes masquées).
+  var estPublic = params.get('public') === '1';
+  var MOIS_MAX = 36;
+  var euros = function (x) { return x == null ? '—' : x.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }); };
+  var pct = function (x, d) { return x == null ? '—' : (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: d == null ? 0 : d }) + ' %'; };
+  var num = function (id) {
+    var input=$(id), v=input.value.trim(), label=document.querySelector('label[for="'+id+'"]');
+    if (input.validity.badInput || (v==='' && id!=='prixPropose')) throw new RangeError('Renseignez « '+(label ? label.textContent : id)+' ».');
+    var n=v==='' ? null : Number(v.replace(',', '.'));
+    if(n!==null && !Number.isFinite(n)) throw new RangeError('Valeur numérique invalide.');
+    return n;
+  };
+  var echapper = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  if (estPublic) document.querySelectorAll('[data-interne]').forEach(function (b) { b.hidden = true; });
+
+  // Réglages passés dans l'URL, pour diffuser une version préconfigurée :
+  // ?public=1&prix=49&commission=15&gamma=3.5&quantile=10&frais=5&observation=3
+  var REGLAGES_URL = { prix: 'prixPropose', commission: 'commission', gamma: 'gamma', quantile: 'quantile', frais: 'frais', sans_jiyufit: 'sansJiyufit', observation: 'observation' };
+  Object.keys(REGLAGES_URL).forEach(function (cle) {
+    var valeur = params.get(cle);
+    if (valeur !== null && valeur !== '' && isFinite(Number(valeur))) $(REGLAGES_URL[cle]).value = valeur;
+  });
+
+  // ---------- Grille mois par mois ----------
+  // Les mois affichés se terminent au dernier mois écoulé, du plus ancien au plus récent.
+  var nombreMois = 12;
+  // Libellés affichés et mois calendaires (0 = janvier), pour repérer les creux saisonniers.
+  function moisGrille(n) {
+    var d = new Date(); d.setDate(1);
+    var sortie = [];
+    for (var i = n; i >= 1; i--) {
+      var m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+      sortie.push({ libelle: m.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }), moisAnnee: m.getMonth() });
+    }
+    return sortie;
+  }
+  function libellesMois(n) { return moisGrille(n).map(function (m) { return m.libelle; }); }
+  var NOMS_MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  function valeursGrille() { return Array.prototype.map.call(document.querySelectorAll('#grille-mois input'), function (i) { return i.value; }); }
+  function construireGrille(valeurs) {
+    var libelles = libellesMois(nombreMois);
+    valeurs = valeurs || [];
+    $('grille-mois').innerHTML = libelles.map(function (l, i) {
+      return '<div><label for="mois-' + i + '">' + echapper(l) + '</label><input id="mois-' + i + '" data-index="' + i + '" type="text" inputmode="decimal" autocomplete="off" placeholder="%" value="' + echapper(valeurs[i] || '') + '"></div>';
+    }).join('');
+    $('ajouter-mois').disabled = nombreMois >= MOIS_MAX;
+  }
+  function validerCase(input) {
+    var ok = true;
+    if (input.value.trim() !== '') { try { ok = M.lireSerie(input.value).length === 1; } catch (e) { ok = false; } }
+    input.setAttribute('aria-invalid', ok ? 'false' : 'true');
+  }
+  $('grille-mois').addEventListener('paste', function (ev) {
+    var cible = ev.target;
+    if (!cible.matches('input')) return;
+    var texte = (ev.clipboardData || window.clipboardData).getData('text');
+    var serie;
+    try { serie = M.lireSerie(texte); } catch (e) { return; }  // laissé tel quel : la case signalera l'erreur
+    if (serie.length < 2) return;
+    ev.preventDefault();
+    var debut = $('ancrage-collage').value==='recent' ? Math.max(0,nombreMois-serie.length) : Number(cible.dataset.index);
+    if (debut + serie.length > nombreMois) {
+      // Série plus longue que les cases suivantes : ce sont « les N derniers mois ».
+      // La grille s'agrandit vers le passé et la série se cale sur le mois le plus récent.
+      serie = serie.slice(-MOIS_MAX);
+      if (serie.length > nombreMois) {
+        var ajout = serie.length - nombreMois;
+        nombreMois = serie.length;
+        construireGrille(new Array(ajout).fill('').concat(valeursGrille()));
+      }
+      debut = nombreMois - serie.length;
+    }
+    var cases = document.querySelectorAll('#grille-mois input');
+    serie.slice(0, nombreMois - debut).forEach(function (v, k) {
+      cases[debut + k].value = String(Math.round(v * 1000) / 10).replace('.', ',');
+      validerCase(cases[debut + k]);
+    });
+    $('resume-collage').textContent='Série placée de '+libellesMois(nombreMois)[debut]+' à '+libellesMois(nombreMois)[debut+Math.min(serie.length,nombreMois-debut)-1]+'.';
+    calculer();
+  });
+  $('grille-mois').addEventListener('input', function (ev) { if (ev.target.matches('input')) validerCase(ev.target); });
+  $('ajouter-mois').addEventListener('click', function () {
+    var anciennes = valeursGrille();
+    var ajout = Math.min(12, MOIS_MAX - nombreMois);
+    nombreMois += ajout;
+    construireGrille(new Array(ajout).fill('').concat(anciennes));
+  });
+  $('vider-mois').addEventListener('click', function () { construireGrille([]); calculer(); });
+
+  function historiqueSaisi() {
+    var serie = [], calendrier = moisGrille(nombreMois), mois = [], points = [];
+    document.querySelectorAll('#grille-mois input').forEach(function (input, i) {
+      if (input.value.trim() === '') return;
+      var v = M.lireSerie(input.value);
+      if (v.length !== 1) throw new RangeError('Une seule valeur par mois (' + calendrier[i].libelle + ')');
+      serie.push(v[0]); mois.push(calendrier[i].libelle);
+      points.push({ moisAnnee: calendrier[i].moisAnnee, valeur: v[0] });
+    });
+    return { valeurs: serie, mois: mois, points: points };
+  }
+
+  // ---------- Modes de saisie : un seul jeu de champs visible ----------
+  function mode() { return document.querySelector('input[name="mode"]:checked').value; }
+  document.querySelectorAll('input[name="mode"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      $('bloc-estimation').hidden = mode() !== 'estimation';
+      $('bloc-historique').hidden = mode() !== 'historique';
+      calculer();
+    });
+  });
+  if (params.get('mode') === 'historique') document.querySelector('input[value="historique"]').checked = true;
+  $('bloc-estimation').hidden = mode() !== 'estimation';
+  $('bloc-historique').hidden = mode() !== 'historique';
+
+  // ---------- Vues ----------
+  var vue = 'communaute';
+  document.querySelectorAll('.onglets button').forEach(function (b) {
+    b.addEventListener('click', function () { choisirVue(b.dataset.vue); });
+  });
+  function choisirVue(v) {
+    if (v === 'salle') v = 'communaute';                 // ancien nom, liens déjà partagés
+    if (estPublic || ['communaute', 'jiyufit', 'portefeuille', 'biface'].indexOf(v) < 0) v = 'communaute';
+    vue = v;
+    document.querySelectorAll('.onglets button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.vue === v)); });
+    $('vue-communaute').hidden = v === 'portefeuille' || v === 'biface';
+    $('vue-biface').hidden = v !== 'biface';
+    $('vue-portefeuille').hidden = v !== 'portefeuille';
+    $('parametres-internes').hidden = v !== 'jiyufit';
+    $('carte-jiyufit').hidden = v !== 'jiyufit';
+    if (v === 'communaute' || v === 'jiyufit') calculer();
+    if (v === 'portefeuille') calculerPortefeuille();
+  }
+
+  function parametresCommuns() {
+    return {
+      commission: (num('commission') ?? 15) / 100,
+      quantilePlancher: (num('quantile') ?? 10) / 100,
+      gamma: num('gamma') ?? 3.5,
+      frais: num('frais') ?? 0, prixMinimum:num('prixMinimum'), plafondRevenu:num('plafondRevenu')/100
+    };
+  }
+
+  function chiffre(libelle, valeur, detail, fort) {
+    return '<div class="chiffre' + (fort ? ' fort' : '') + '"><div class="libelle">' + libelle + '</div><div class="valeur">' + valeur + '</div>' + (detail ? '<div class="detail">' + detail + '</div>' : '') + '</div>';
+  }
+
+  // ---------- Graphique : barres mensuelles, plancher, complément JiyuFit ----------
+  function graphique(points, plancher, payoutPlein, titre) {
+    var L = 520, H = 230, g = 48, d = 8, h = 16, b = 36;
+    var largeurUtile = L - g - d, hauteurUtile = H - h - b;
+    var pas = largeurUtile / points.length, barre = Math.max(4, pas * 0.68);
+    var y = function (v) { return h + hauteurUtile * (1 - v); };
+    var svg = '';
+    [0, 0.25, 0.5, 0.75, 1].forEach(function (t) {
+      svg += '<line x1="' + g + '" x2="' + (L - d) + '" y1="' + y(t) + '" y2="' + y(t) + '" stroke="#E4DED4" stroke-width="1"/>';
+      svg += '<text x="' + (g - 6) + '" y="' + (y(t) + 4) + '" text-anchor="end" font-size="13" fill="#5B5B5B" font-family="monospace">' + Math.round(t * 100) + ' %</text>';
+    });
+    var sousPlancher = 0, complementTotal = 0;
+    var intervalle = Math.ceil(points.length / 6);   // 6 étiquettes au plus : lisibles sur mobile, même sur 36 mois
+    points.forEach(function (p, i) {
+      var x = g + i * pas + (pas - barre) / 2;
+      svg += '<rect x="' + x + '" y="' + y(p.valeur) + '" width="' + barre + '" height="' + (y(0) - y(p.valeur)) + '" fill="#0A0A0A"><title>' + echapper(p.label) + ' : ' + pct(p.valeur, 1) + '</title></rect>';
+      if (p.valeur < plancher) {
+        sousPlancher += 1;
+        complementTotal += (plancher - p.valeur) * payoutPlein;
+        svg += '<rect x="' + x + '" y="' + y(plancher) + '" width="' + barre + '" height="' + (y(p.valeur) - y(plancher)) + '" fill="#D8611F"><title>Complément JiyuFit : ' + euros((plancher - p.valeur) * payoutPlein) + '</title></rect>';
+      }
+      if (i % intervalle === 0) svg += '<text x="' + (x + barre / 2) + '" y="' + (H - b + 16) + '" text-anchor="middle" font-size="13" fill="#5B5B5B" font-family="monospace">' + echapper(p.label) + '</text>';
+    });
+    svg += '<line x1="' + g + '" x2="' + (L - d) + '" y1="' + y(plancher) + '" y2="' + y(plancher) + '" stroke="#D8611F" stroke-width="2.5" stroke-dasharray="7 5"/>';
+    var resume = titre + ' : ' + sousPlancher + ' mois sur ' + points.length + ' sous le plancher de ' + pct(plancher) + '.';
+    $('graphique').innerHTML = '<svg viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="' + echapper(resume) + '">' + svg + '</svg>' +
+      '<div class="legende"><span class="l-mois">Remplissage</span><span class="l-complement">Complément JiyuFit</span><span class="l-plancher">Plancher garanti actuel (' + euros(plancher * payoutPlein) + ')</span></div>';
+    return { sousPlancher: sousPlancher, complementTotal: complementTotal, nombre: points.length };
+  }
+
+  // ---------- Calcul de la vue communauté / JiyuFit ----------
+  function calculer() {
+    $('erreur').textContent = '';
+    $('resultats-garantie').hidden=true; $('carte-jiyufit').hidden=true;
+    window.garantieCourante=null;
+    try {
+      var saisie = mode() === 'historique' ? historiqueSaisi() : null;
+      var e = Object.assign(parametresCommuns(), {
+        placesParMois: num('placesParMois'), prix: num('prix'),
+        prixPropose: num('prixPropose'),
+        remplissageSansJiyufit: (num('sansJiyufit') ?? 0) / 100
+      });
+      if (saisie) {
+        if (saisie.valeurs.length < 6) throw new RangeError('Renseignez au moins 6 mois (' + saisie.valeurs.length + ' pour l\'instant), ou passez en estimation rapide.');
+        e.historique = saisie.valeurs;
+      } else {
+        e.remplissage = (num('remplissage') ?? 0) / 100;
+        e.moisFaible = (num('moisFaible') ?? 0) / 100;
+      }
+      var r = M.evaluerSalle(e);
+      $('resultats-garantie').hidden=false; $('carte-jiyufit').hidden=vue!=='jiyufit';
+      window.garantieCourante={resultat:r,entree:e};
+      var partRevenu = r.revenuNetMoyen > 0 ? r.prime / r.revenuNetMoyen : null;
+      var prixFixe = num('prixPropose') != null;
+      var test = saisie ? M.testerSurDerniereAnnee(e) : null;
+      var creux = saisie ? M.creuxSaisonniers(saisie.points) : [];
+
+      $('chiffres-communaute').innerHTML =
+        chiffre('Revenu net moyen', euros(r.revenuNetMoyen) + '/mois', 'Remplissage moyen ' + pct(r.remplissageMoyen) + ', après commission') +
+        chiffre(r.tarifValide ? 'Plancher simulé' : 'Plancher à réviser', euros(r.plancherEuros) + '/mois', 'Soit ' + pct(r.plancherTaux) + ' de remplissage, ' + pct(r.plancherPartRevenu) + ' de votre revenu moyen', true) +
+        chiffre(r.tarifValide ? 'Prix indicatif de la garantie' : 'Tarif prudent · devis suspendu', euros(r.prime) + '/mois', '≈ ' + pct(partRevenu, 1) + ' de votre revenu net moyen') +
+        chiffre('Mois sous le plancher', pct(r.probaSousPlancher), saisie ? 'Fréquence réellement observée sur les mois saisis' : 'Probabilité du modèle, pas une fréquence observée');
+
+      var points = saisie
+        ? saisie.valeurs.map(function (v, i) { return { label: saisie.mois[i], valeur: v }; })
+        : M.moisTypes(r._dist, 10).map(function (v, i) { return { label: 'M' + (i + 1), valeur: v }; });
+      var bilan = graphique(points, r.plancherTaux, r.payoutPlein, saisie ? 'Vos mois' : 'Vos 10 mois types, du plus faible au plus fort');
+
+      // Vue communauté : pas de complément moyen attendu (il révélerait la marge).
+      // Avec 24 mois ou plus : test honnête (plancher calculé sans la dernière
+      // année, appliqué à elle). Sinon : bilan sur les mêmes mois, dit comme tel.
+      var verdict;
+      if (test) {
+        verdict = 'Test sur votre dernière année : avec un plancher calculé sur vos ' + test.moisCalibrage + ' mois précédents (' + euros(test.plancherEuros) + '), la garantie aurait complété ' +
+          test.moisSousPlancher + ' mois sur ' + test.moisTest + ', pour ' + euros(test.complementTotal) + ' au total.';
+      } else if (saisie) {
+        verdict = 'À titre indicatif (plancher calculé sur ces mêmes mois) : sur vos ' + bilan.nombre + ' mois, la garantie aurait complété ' + bilan.sousPlancher +
+          ' mois, pour ' + euros(bilan.complementTotal) + '. Avec 24 mois, le calcul pourra être vérifié sur une année qu\'il n\'a pas utilisée.';
+      } else {
+        verdict = 'Plancher simulé : ' + euros(r.plancherEuros) + '. Probabilité de complément selon le modèle : ' + pct(r.probaSousPlancher,1) + '. Cette estimation reste conditionnelle aux hypothèses et à la validation du devis.';
+      }
+      if (!r.tarifValide) verdict = (r.couvertureInsuffisante ? 'DEVIS REFUSÉ : plancher trop faible au regard du prix. Le prix doit rester au plus à '+pct(r.partPrixMax)+' du plancher (règle de simulation). ' : r.revueRequise ? 'DEVIS SUSPENDU : fréquence élevée de compléments ou échec hors échantillon ; risque à examiner. ' : 'DEVIS SUSPENDU : prix inférieur au tarif prudent ou couverture nulle. ') + verdict;
+      $('verdict-communaute').textContent = verdict;
+      $('verdict-communaute').className = r.tarifValide ? 'verdict' : 'verdict alerte';
+
+      // Stabilité : ce que devient le calcul sans le pire mois.
+      $('stabilite').hidden = !r.sensibilite;
+      if (r.sensibilite) {
+        $('stabilite').textContent = 'Stabilité : sans votre pire mois (' + pct(r.sensibilite.pireMois) + '), le plancher serait de ' + euros(r.sensibilite.plancherEuros) +
+          (prixFixe ? '.' : ' et le prix de ' + euros(r.sensibilite.prime) + '/mois.') +
+          ' Le plancher et le prix sont recalculés ensemble : retirer un mauvais mois peut relever le plancher, donc augmenter le prix malgré un historique meilleur. Ce test ne compare pas deux prix à couverture identique.';
+      }
+
+      // Creux saisonniers : prévisibles, donc couverts presque chaque année.
+      $('saisonnalite').hidden = creux.length === 0;
+      if (creux.length) {
+        $('saisonnalite').textContent = 'Creux qui reviennent chaque année : ' + creux.map(function (c) {
+          return NOMS_MOIS[c.moisAnnee] + ' (' + (c.ecart * 100).toFixed(0).replace('-', '−') + ' % par rapport à votre moyenne, ' + c.occurrences + ' années sur ' + c.occurrences + ')';
+        }).join(', ') + '. La garantie les compléterait probablement tous les ans : le prix prudent intègre au moins le complément moyen observé, sans garantir la couverture du risque futur. Une revue reste nécessaire.';
+      }
+
+      var moisObserves = saisie
+        ? 'Sur vos mois, votre activité a atteint ou dépassé ce niveau ' + r.moisAuDessus + ' mois sur ' + r.nombreMois + '. '
+        : '';
+      var methode = !saisie
+        ? 'Il est estimé à partir de votre mois médian et de votre mauvais mois, avec un plafond à 90 % du revenu moyen ; la fréquence affichée précise le résultat.'
+        : 'Il est calculé sur une courbe ajustée à la moitié basse de vos mois (vos mois complets ne comptent pas, un mois isolé ne fait pas tout basculer), avec un plafond à 90 % du revenu moyen ; la fréquence affichée précise le résultat.';
+      $('explication-liste').innerHTML = [
+        moisObserves + 'Le plancher vaut ' + pct(r.plancherPartRevenu) + ' de votre revenu moyen. ' + methode,
+        prixFixe
+          ? 'Le prix de ' + euros(r.prime) + '/mois est celui de l\'offre proposée par JiyuFit.'
+          : 'Le prix dépend du risque propre à votre activité : plus vos mois sont irréguliers, plus le plancher risque d\'être atteint, et plus le prix monte. Ce n\'est ni un forfait, ni un pourcentage fixe de votre chiffre d\'affaires.',
+        'Le prix couvre aussi les baisses simultanées du réseau. Dans ce scénario, −10 points de remplissage donnent ' + euros(r.stress10) + ' de compléments par mois ; −30 points donnent ' + euros(r.stress30) + '. Ces stress illustrent le risque, sans valider à eux seuls γ = ' + e.gamma.toLocaleString('fr-FR') + '.',
+        'Le tarif prudent retient le plus élevé du risque ajusté et des compléments historiques moyens, puis applique le chargement et le prix minimum.',
+        'Il représente ici environ ' + pct(partRevenu, 1) + ' de votre revenu net moyen.',
+        'Le revenu plein (toutes places vendues) est de ' + euros(r.payoutPlein) + '/mois après commission : le plancher et le complément s\'expriment sur cette base.'
+      ].map(function (t) { return '<li>' + echapper(t) + '</li>'; }).join('');
+
+      var observation = num('observation') ?? 3;
+      $('conditions').textContent = observation > 0
+        ? 'Promesse conditionnelle : la garantie s\'active après ' + observation + ' mois d\'activité sur JiyuFit. Le plancher est alors recalculé sur vos données réelles, puis la garantie se renouvelle chaque mois.'
+        : 'La garantie se renouvelle chaque mois ; le plancher est recalculé sur vos données réelles.';
+
+      if (vue === 'jiyufit') {
+        $('chiffres-jiyufit').innerHTML =
+          chiffre('Complément moyen (prime pure)', euros(r.primePure) + '/mois', 'Manque moyen sous le plancher') +
+          (r.plancherBrutTaux != null ? chiffre('Contrôle : quantile brut', euros(r.plancherBrutTaux * r.payoutPlein), 'Plancher si calculé sur les mois bruts (non retenu)') : '') +
+          chiffre('Prix calculé (<span class="grec">γ</span>)', euros(r.primeCommerciale) + '/mois', 'Prix minimal ' + euros(r.primeMinimale)) +
+          chiffre('Loss ratio', pct(r.lossRatio), 'Compléments / primes encaissées', true) +
+          chiffre('Commission JiyuFit', euros(r.commissionJiyufit) + '/mois') +
+          chiffre('Marge garantie', euros(r.margeGarantie) + '/mois') +
+          chiffre('Marge totale / activité', euros(r.margeJiyufit) + '/mois');
+        var v = $('verdict-jiyufit');
+        var complements = [];
+        if(!r.tarifValide) complements.push('DEVIS SUSPENDU : revue du risque ou du prix requise.');
+        if (test) {
+          complements.push('Hors échantillon (dernière année) : loss ratio ' + pct(test.lossRatio) + ' — ' + euros(test.complementTotal) + ' versés pour ' + euros(test.primesEncaissees) + ' encaissés.');
+        } else if (saisie) {
+          complements.push('Pas de test hors échantillon sous 24 mois : risque retenu = maximum du modèle ajusté et des compléments historiques moyens.');
+        }
+        if (creux.length) complements.push('Anti-sélection : creux saisonniers récurrents (' + creux.map(function (c) { return NOMS_MOIS[c.moisAnnee]; }).join(', ') + ') — complément quasi certain chaque année.');
+        if (r.seuil.deficitaire) {
+          v.textContent = 'Au prix de ' + euros(r.prime) + ', la garantie est déjà déficitaire : il faut au moins ' + euros(r.primeMinimale) + '/mois. ' + complements.join(' ');
+          v.className = 'verdict alerte';
+        } else {
+          v.textContent = 'Seuil de rentabilité : la garantie vendue ' + euros(r.prime) + '/mois reste rentable tant que le remplissage moyen reste au-dessus de ' +
+            pct(r.seuil.remplissageMoyen, 1) + ' (marge de recul : ' + (r.seuil.recul * 100).toFixed(1).replace('.', ',') + ' points). ' + complements.join(' ');
+          v.className = !r.tarifValide || creux.length || (test && test.lossRatio > 1) ? 'verdict alerte' : 'verdict ok';
+        }
+      }
+    } catch (err) {
+      $('erreur').textContent = err.message;
+      $('resultats-garantie').hidden=true; $('carte-jiyufit').hidden=true; window.garantieCourante=null;
+    }
+    document.dispatchEvent(new Event('garantie-actualisee'));
+  }
+
+  // ---------- Portefeuille ----------
+  var dernierPortefeuille = null;
+  function calculerPortefeuille() {
+    $('erreur-portefeuille').textContent = '';
+    dernierPortefeuille=null; $('chiffres-portefeuille').innerHTML=''; $('table-portefeuille').innerHTML=''; $('exporter').disabled=true;
+    try {
+      var salles = M.lireCsv($('csv').value).map(function (s) { return Object.assign({}, parametresCommuns(), s); });
+      // Historiques CSV : le dernier mois est le dernier mois écoulé (même convention que la grille).
+      var moisFin = (new Date().getMonth() + 11) % 12;
+      var p = M.evaluerPortefeuille(salles, { choc: (num('choc') ?? 0) / 100, moisFin: moisFin });
+      dernierPortefeuille = p; $('exporter').disabled=false;
+      $('chiffres-portefeuille').innerHTML =
+        chiffre('Activités', String(p.lignes.length)) +
+        chiffre('Primes', euros(p.primes) + '/mois') +
+        chiffre('Compléments attendus', euros(p.sinistresAttendus) + '/mois') +
+        chiffre('Loss ratio', pct(p.lossRatio), p.lignes.some(l=>!l.resultat.tarifValide) ? 'Revue requise / devis suspendu' : 'Base prudente, hors stress', true) +
+        chiffre('Loss ratio sous stress', pct(p.lossRatioSousChoc), num('choc')===0 ? 'Aucun choc' : 'Réseau −' + num('choc') + ' points', true) +
+        chiffre('Marge totale', euros(p.marge) + '/mois', 'Commissions ' + euros(p.commissions)) +
+        (p.horsEchantillon ? chiffre('Loss ratio hors échantillon', pct(p.horsEchantillon.lossRatio), 'Dernière année, ' + p.horsEchantillon.activites + ' activité(s) à 24 mois et plus', true) : '');
+      var html = '<thead><tr><th>Activité</th><th>Statut devis</th><th>Rempl. moyen</th><th>Plancher</th><th>Compl. moyen</th><th>Prix</th><th>Loss ratio</th><th>Commission</th><th>Marge</th><th>Seuil rentab.</th><th>LR dernière année</th><th>Creux récurrents</th></tr></thead><tbody>';
+      p.lignes.forEach(function (l) {
+        var r = l.resultat;
+        html += '<tr><td>' + echapper(l.nom) + '</td><td>' + (r.tarifValide ? 'Indicatif' : 'Suspendu / revue') + '</td><td>' + pct(r.remplissageMoyen) + '</td><td>' + euros(r.plancherEuros) + '</td><td>' + euros(r.primePure) +
+          '</td><td>' + euros(r.prime) + '</td><td>' + pct(r.lossRatio) + '</td><td>' + euros(r.commissionJiyufit) + '</td><td>' + euros(r.margeJiyufit) +
+          '</td><td>' + (r.seuil.deficitaire ? 'déficitaire' : pct(r.seuil.remplissageMoyen, 1)) +
+          '</td><td>' + (l.test ? pct(l.test.lossRatio) : '—') + '</td><td>' + (l.creux.length ? l.creux.map(function (c) { return NOMS_MOIS[c.moisAnnee]; }).join(', ') : '—') + '</td></tr>';
+      });
+      $('table-portefeuille').innerHTML = html + '</tbody>';
+    } catch (err) {
+      $('erreur-portefeuille').textContent = err.message;
+    }
+  }
+
+  function exporter() {
+    if (!dernierPortefeuille) calculerPortefeuille();
+    if (!dernierPortefeuille) return;
+    var arr = function (x) { return x == null ? '' : String(Math.round(x * 100) / 100).replace('.', ','); };
+    var lignes = ['nom;remplissage_moyen_pct;plancher_eur;complement_moyen_eur;prix_eur;loss_ratio_pct;commission_eur;marge_eur;seuil_remplissage_pct;loss_ratio_derniere_annee_pct;creux_recurrents;statut_devis'];
+    dernierPortefeuille.lignes.forEach(function (l) {
+      var r = l.resultat;
+      lignes.push([l.nom, arr(r.remplissageMoyen * 100), arr(r.plancherEuros), arr(r.primePure), arr(r.prime), arr(r.lossRatio * 100), arr(r.commissionJiyufit), arr(r.margeJiyufit), r.seuil.deficitaire ? 'deficitaire' : arr(r.seuil.remplissageMoyen * 100), l.test ? arr(l.test.lossRatio * 100) : '', l.creux.map(function (c) { return NOMS_MOIS[c.moisAnnee]; }).join(' '), r.tarifValide ? 'indicatif' : 'suspendu_revue'].join(';'));
+    });
+    var lien = document.createElement('a');
+    lien.href = URL.createObjectURL(new Blob(['﻿' + lignes.join('\n')], { type: 'text/csv;charset=utf-8' }));
+    lien.download = 'garantie-portefeuille.csv';
+    lien.click();
+    URL.revokeObjectURL(lien.href);
+  }
+
+  $('formulaire').addEventListener('input', calculer);
+  $('csv').addEventListener('input',calculerPortefeuille);
+  $('choc').addEventListener('input',calculerPortefeuille);
+  $('calculer-portefeuille').addEventListener('click', calculerPortefeuille);
+  $('exporter').addEventListener('click', exporter);
+  $('fichier').addEventListener('change', function (ev) {
+    var f = ev.target.files[0];
+    if (!f) return;
+    f.text().then(function (t) { $('csv').value = t; calculerPortefeuille(); });
+  });
+  $('csv').value = 'nom;places_mois;prix;commission;remplissage;mois_faible;historique;prix_propose\n' +
+    'Volt Fitness (exemple doctrine);173;12;15;65;54;;89\n' +
+    'Activité exemple avec historique;120;10;15;;;66 48 70 63 59 71 64 52 68 61 57 69;\n';
+  construireGrille([]);
+  choisirVue(estPublic ? 'communaute' : (params.get('vue') || 'communaute'));
+})();
+</script>
+
+<script id="moteur-biface">
+(function(root) {
+  'use strict';
+  const defaults = {"marche_utilisateurs": 20000, "marche_prestataires": 200, "demandes_par_utilisateur": 4, "places_par_prestataire": 100, "compatibilite": 0.015, "recrutement_utilisateurs": 20, "recrutement_prestataires": 1, "acquisition_seo_utilisateurs": 0, "acquisition_seo_prestataires": 0, "cout_seo_mensuel": 0, "prime_garantie_prestataire": 0, "complement_garantie_prestataire": 0, "effet_utilisateurs": 0.24, "effet_prestataires": 0.18, "attrition_utilisateurs": 0.08, "attrition_prestataires": 0.035, "prix_seance": 20, "commission": 0.2, "cout_variable_reservation": 0.6, "opex_fixes": 8000, "opex_par_prestataire": 5, "cac_utilisateur": 10, "cac_prestataire": 100};
+  function simuler(options = {}) {
+    const p = {...defaults, ...(options.parametres || {})};
+    let u = options.utilisateurs ?? 100, s = options.prestataires ?? 5;
+    const mois = options.mois ?? 120;
+    for (const [key,value] of Object.entries(p)) {
+      if (!(typeof value === 'number' && Number.isFinite(value) && value >= 0)) throw new Error('Paramètre invalide : '+key);
+    }
+    for (const key of ['commission','effet_utilisateurs','effet_prestataires','attrition_utilisateurs','attrition_prestataires']) {
+      if (p[key]>1) throw new Error(key+' : valeur entre 0 et 1 requise.');
+    }
+    if (p.marche_utilisateurs<=0 || p.marche_prestataires<=0) throw new Error('Marchés adressables strictement positifs requis.');
+    if (![u,s].every(v=>typeof v==='number' && Number.isFinite(v) && v>=0) || u>p.marche_utilisateurs || s>p.marche_prestataires) throw new Error('Stocks initiaux invalides ou supérieurs au marché adressable.');
+    if (!Number.isInteger(mois) || mois<1 || mois>1200) throw new Error('Durée entière entre 1 et 1200 mois.');
+    let cumul=0, besoin=0; const rows=[];
+    function entrees(stock, ceiling, paid, feedback, seo) {
+      const saturation=1-stock/ceiling, a=paid*saturation, o=feedback*stock*saturation, z=seo*saturation, total=a+o+z;
+      const f=total ? Math.min(1,(ceiling-stock)/total) : 1;
+      return [a*f,o*f,z*f];
+    }
+    for(let t=0;t<mois;t++) {
+      const L=p.places_par_prestataire ? -Math.expm1(-p.compatibilite*s) : 0;
+      const D=p.demandes_par_utilisateur*u, C=p.places_par_prestataire*s, B=Math.min(D*L,C);
+      const service=D ? B/D : null, fill=C ? B/C : null;
+      const [au,ou,zu]=entrees(u,p.marche_utilisateurs,p.recrutement_utilisateurs,p.effet_utilisateurs*(service || 0),p.acquisition_seo_utilisateurs);
+      const [as,os,zs]=entrees(s,p.marche_prestataires,p.recrutement_prestataires,p.effet_prestataires*(fill || 0),p.acquisition_seo_prestataires);
+      const nu=u*(1-p.attrition_utilisateurs)+au+ou+zu, ns=s*(1-p.attrition_prestataires)+as+os+zs;
+      const commission=p.prix_seance*p.commission*B, primes=p.prime_garantie_prestataire*s, complements=p.complement_garantie_prestataire*s;
+      const revenu=commission+primes;
+      const couts=p.cout_variable_reservation*B+p.opex_fixes+p.opex_par_prestataire*s+p.cac_utilisateur*au+p.cac_prestataire*as+p.cout_seo_mensuel+complements;
+      cumul+=revenu-couts; besoin=Math.max(besoin,-cumul);
+      const row={mois:t,paires_potentielles:u*s,probabilite_offre_compatible:L,demandes:D,capacite:C,reservations:B,taux_service:service,remplissage:fill,
+        utilisateurs:u,prestataires:s,nouveaux_utilisateurs_seo:zu,nouveaux_prestataires_seo:zs,revenu_commission:commission,revenu_garantie:primes,cout_garantie:complements,nouveaux_utilisateurs_payants:au,nouveaux_utilisateurs_organiques:ou,nouveaux_prestataires_payants:as,nouveaux_prestataires_organiques:os,
+        croissance_organique_utilisateurs:ou-p.attrition_utilisateurs*u,croissance_organique_prestataires:os-p.attrition_prestataires*s,
+        revenu_plateforme:revenu,couts_opex:couts,solde_exploitation:revenu-couts,utilisateurs_suivants:nu,prestataires_suivants:ns,solde_cumule:cumul,financement_cumule_requis:besoin};
+      if (Object.values(row).some(v=>v!==null && !Number.isFinite(v))) throw new Error('Valeurs trop grandes pour le calcul.');
+      rows.push(row); u=nu; s=ns;
+    }
+    let bascule=null;
+    for(let i=0;i<rows.length-2;i++) {
+      if(rows.slice(i,i+3).every(r=>r.croissance_organique_utilisateurs>0 && r.croissance_organique_prestataires>0)) {bascule=i;break;}
+    }
+    return {version:'biface-2026-09-28',calibration_empirique:false,parametres:p,utilisateurs_initial:options.utilisateurs ?? 100,prestataires_initial:options.prestataires ?? 5,mois,
+      bascule,trajectoire:rows};
+  }
+  const api={defaults,simuler};
+  if(typeof module!=='undefined' && module.exports) module.exports=api; else root.JiyuFitBiface=api;
+})(typeof globalThis!=='undefined' ? globalThis : this);
+</script>
+
+<script id="interface-biface">
+(function() {
+  'use strict';
+  const $=id=>document.getElementById(id), M=globalThis.JiyuFitBiface;
+  const taux=['commission','effet_utilisateurs','effet_prestataires','attrition_utilisateurs','attrition_prestataires'];
+  const pourcentageAffiche=v=>Number((v*100).toPrecision(12));
+  const initial={utilisateurs:100,prestataires:5,mois:120,...M.defaults,prix_seance:Number($('prix').value),places_par_prestataire:Number($('placesParMois').value),commission:Number($('commission').value)/100};
+  for (const [k,v] of Object.entries(initial)) $('bf-'+k).value=taux.includes(k) ? pourcentageAffiche(v) : v;
+  const partages={commission:'commission',prix_seance:'prix',places_par_prestataire:'placesParMois'};
+  let garantieLiee=false;
+  document.dispatchEvent(new Event('garantie-actualisee'));
+  let dernier=null;
+  const fmt=(v,unit='')=>v===null ? 'Inconnu' : new Intl.NumberFormat('fr-FR',{maximumFractionDigits:1}).format(v)+unit;
+  function card(label,value) { return '<div class="chiffre"><div class="libelle">'+label+'</div><div class="valeur">'+value+'</div></div>'; }
+  function graphique(rows,key,label,unit='') {
+    const vals=rows.map(r=>r[key] ?? 0), lo=Math.min(0,...vals), hi=Math.max(1,...vals), range=hi-lo;
+    const x=i=>65+i/Math.max(1,rows.length-1)*440, y=v=>150-(v-lo)/range*120;
+    const points=vals.map((v,i)=>x(i)+','+y(v)).join(' ');
+    return '<h3 style="font-size:1rem">'+label+'</h3><svg viewBox="0 0 530 185" role="img" aria-label="'+label+' : de '+fmt(vals[0],unit)+' à '+fmt(vals.at(-1),unit)+'">'+
+      '<line x1="65" y1="'+y(0)+'" x2="505" y2="'+y(0)+'" stroke="#aaa"/><polyline fill="none" stroke="#D8611F" stroke-width="3" points="'+points+'"/>'+
+      '<g font-size="11" fill="#333"><text x="2" y="32">'+fmt(hi)+'</text><text x="2" y="150">'+fmt(lo)+'</text><text x="65" y="177">M0</text><text x="470" y="177">M'+(rows.length-1)+'</text></g></svg>';
+  }
+  function calculer(ev) {
+    if(ev) ev.preventDefault();
+    dernier=null; $('bf-export').disabled=true; $('bf-erreur').textContent=''; $('bf-unites').textContent='';
+    try {
+      const values={}, avertissements=[];
+      for(const k of Object.keys(initial)) {
+        const input=$('bf-'+k); input.removeAttribute('aria-invalid');
+        if(input.validity.badInput || input.value.trim()==='' || !Number.isFinite(Number(input.value))) {input.setAttribute('aria-invalid','true');throw new Error('Renseignez « '+document.querySelector('label[for="bf-'+k+'"]').textContent+' ».');}
+        const saisie=Number(input.value), label=document.querySelector('label[for="bf-'+k+'"]').textContent;
+        if(taux.includes(k)) {
+          if(saisie<0 || saisie>100) throw new Error(label+' : valeur entre 0 et 100 % requise.');
+          if(saisie>0 && saisie<1) avertissements.push(label+' : '+saisie.toLocaleString('fr-FR')+' % saisi. Si vous vouliez '+(saisie*100).toLocaleString('fr-FR')+' %, saisissez '+(saisie*100).toLocaleString('fr-FR')+'.');
+        }
+        values[k]=saisie/(taux.includes(k)?100:1);
+      }
+      $('bf-unites').textContent=avertissements.join(' ');
+      const {utilisateurs,prestataires,mois,...parametres}=values;
+      const result=M.simuler({utilisateurs,prestataires,mois,parametres}), rows=result.trajectoire, last=rows.at(-1);
+      $('bf-resultats').hidden=false;
+      $('bf-chiffres').innerHTML=card('Utilisateurs · début M'+last.mois,fmt(Math.round(last.utilisateurs)))+card('Prestataires · début M'+last.mois,fmt(Math.round(last.prestataires)))+
+        card('Demandes servies · M'+last.mois,fmt(last.taux_service===null ? null : last.taux_service*100,' %'))+
+        card('Réservations · M'+last.mois,fmt(Math.round(last.reservations)))+card('Revenu total · M'+last.mois,fmt(last.revenu_plateforme,' €'))+
+        card('Solde exploitation · M'+last.mois,fmt(last.solde_exploitation,' €'))+card('Financement cumulé requis',fmt(last.financement_cumule_requis,' €'));
+      $('bf-bascule').textContent=result.bascule===null ? 'Aucun passage observé à trois mois consécutifs de croissance organique nette positive des deux faces sur cet horizon.' :
+        'Croissance organique nette positive des deux faces pendant trois mois consécutifs à partir de M'+result.bascule+'. Critère de scénario, pas une date de bascule prédite pour JiyuFit. M0 = mois initial.';
+      $('bf-graphique').innerHTML=graphique(rows,'utilisateurs','Utilisateurs')+graphique(rows,'prestataires','Prestataires')+graphique(rows,'solde_exploitation','Solde exploitation (€/mois)',' €');
+      $('bf-table').innerHTML='<thead><tr><th>Mois</th><th>Utilisateurs</th><th>Prestataires</th><th>Service %</th><th>Réservations</th><th>Revenu €</th><th>OPEX €</th><th>Solde €</th></tr></thead><tbody>'+
+        rows.map(r=>'<tr>'+[r.mois,Math.round(r.utilisateurs),Math.round(r.prestataires),r.taux_service===null?null:r.taux_service*100,Math.round(r.reservations),r.revenu_plateforme,r.couts_opex,r.solde_exploitation].map(v=>'<td>'+fmt(v)+'</td>').join('')+'</tr>').join('')+'</tbody>';
+      dernier=result; $('bf-export').disabled=false;
+    } catch(err) { $('bf-erreur').textContent=err.message.replace(/\b[a-z]+_[a-z_]+\b/g,key=>document.querySelector('label[for="bf-'+key+'"]')?.textContent || key); $('bf-resultats').hidden=true; }
+  }
+  $('bf-form').addEventListener('submit',calculer);
+  $('bf-form').addEventListener('input',ev=>{
+    const key=ev.target.name;
+    if(partages[key]) {$(partages[key]).value=ev.target.value;$(partages[key]).dispatchEvent(new Event('input',{bubbles:true}));}
+    calculer();
+  });
+  document.addEventListener('garantie-actualisee',()=>{
+    for(const [k,id] of Object.entries(partages)) $('bf-'+k).value=$(id).value;
+    if(garantieLiee) {
+      $('bf-prime_garantie_prestataire').value=0; $('bf-complement_garantie_prestataire').value=0; garantieLiee=false;
+      $('bf-lien-garantie').textContent='Garantie retirée : paramètres activité modifiés. Vérifiez le nouveau devis avant de le réintégrer.';
+    }
+    calculer();
+  });
+  $('bf-garantie').addEventListener('click',()=>{
+    const g=window.garantieCourante;
+    if(!g || !g.resultat.tarifValide) { $('bf-lien-garantie').textContent='Intégration refusée : corrigez la saisie ou faites réviser le devis suspendu.'; return; }
+    $('bf-prime_garantie_prestataire').value=g.resultat.prime;
+    $('bf-complement_garantie_prestataire').value=g.resultat.primePure+g.entree.frais;
+    garantieLiee=true;
+    $('bf-lien-garantie').textContent='Garantie intégrée pour chaque prestataire représentatif : primes en revenu, compléments et frais en coûts. Hypothèse fixe sur toute la trajectoire, à réviser si le remplissage change.';
+    calculer();
+  });
+  $('bf-scenario').addEventListener('change',()=>{
+    const values={...initial,...Object.fromEntries(Object.entries(partages).map(([k,id])=>[k,Number($(id).value)/(taux.includes(k)?100:1)]))}, scenario=$('bf-scenario').value;
+    if(scenario==='sans_reseau') {values.effet_utilisateurs=0;values.effet_prestataires=0;}
+    if(scenario==='faible_compatibilite') values.compatibilite=.001;
+    if(scenario==='capacite') values.places_par_prestataire=2;
+    for(const [k,v] of Object.entries(values)) $('bf-'+k).value=taux.includes(k)?pourcentageAffiche(v):v;
+    garantieLiee=false;
+    $('bf-lien-garantie').textContent='Garantie non intégrée dans cet exemple.';
+    for(const [k,id] of Object.entries(partages)) $(id).value=$('bf-'+k).value;
+    $('prix').dispatchEvent(new Event('input',{bubbles:true}));
+    calculer();
+  });
+  $('bf-export').addEventListener('click',()=>{
+    if(!dernier) return;
+    const url=URL.createObjectURL(new Blob([JSON.stringify(dernier,null,2)],{type:'application/json'}));
+    const a=document.createElement('a');a.href=url;a.download='jiyufit-scenario-biface.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+  calculer();
+})();
+</script>
+</body>
+</html>

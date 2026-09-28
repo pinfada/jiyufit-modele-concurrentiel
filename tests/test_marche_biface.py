@@ -11,6 +11,20 @@ from outils.valider_plateformes import evaluation_publique
 
 
 class MarcheBifaceTests(unittest.TestCase):
+    def test_seo_amorce_sans_acquisition_payante_et_couts_garantie(self):
+        p=replace(Parametres(), recrutement_utilisateurs=0,recrutement_prestataires=0,
+                  acquisition_seo_utilisateurs=25,acquisition_seo_prestataires=2,cout_seo_mensuel=300,
+                  prime_garantie_prestataire=40,complement_garantie_prestataire=15)
+        rows=simuler(0,0,12,p)
+        self.assertEqual(rows[0]['utilisateurs_suivants'],25)
+        self.assertEqual(rows[0]['prestataires_suivants'],2)
+        self.assertEqual(rows[0]['couts_opex'],8300)
+        self.assertTrue(all(r['nouveaux_utilisateurs_payants']==0 for r in rows))
+        r=rows[1]
+        self.assertEqual(r['revenu_garantie'],80)
+        self.assertEqual(r['cout_garantie'],30)
+        self.assertAlmostEqual(r['revenu_plateforme'],r['revenu_commission']+80)
+
     def test_aucune_transaction_sans_offre_demande_ou_compatibilite(self):
         p = Parametres()
         for u, s, config in [(0, 10, p), (100, 0, p),
